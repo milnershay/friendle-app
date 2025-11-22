@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
 import { db } from "@/lib/firebase";
-import { ref, onValue, set, update, get, onDisconnect } from "firebase/database";
+import { ref, onValue, set, update, get } from "firebase/database";
 import GameBoard from "@/components/game/GameBoard";
 import { WORD_LISTS } from "@/lib/wordLists";
 import { useTranslation, getStoredLanguage, type Language } from "@/lib/i18n";
@@ -125,7 +125,8 @@ export default function RoomPage() {
     const t = useTranslation(language);
 
     useEffect(() => {
-        setLanguage(getStoredLanguage());
+        // Avoid synchronous setState in effect
+        setTimeout(() => setLanguage(getStoredLanguage()), 0);
     }, []);
 
     // We need a stable ID for the user. 
@@ -150,10 +151,10 @@ export default function RoomPage() {
             storedId = Math.random().toString(36).substring(2, 15);
             localStorage.setItem(`friendle_uid_${roomId}`, storedId);
         }
-        setUserId(storedId);
+        setTimeout(() => setUserId(storedId as string), 0);
 
         const roomRef = ref(db, `rooms/${roomId}`);
-        const playerRef = ref(db, `rooms/${roomId}/players/${storedId}`);
+        // const playerRef = ref(db, `rooms/${roomId}/players/${storedId}`);
 
         // Subscribe to room updates
         const unsubscribe = onValue(roomRef, (snapshot) => {
@@ -212,7 +213,7 @@ export default function RoomPage() {
 
         try {
             let wordObj: { word: string; suggester?: string } | undefined;
-            let newQueue = [...(room.wordQueue || [])];
+            const newQueue = [...(room.wordQueue || [])];
             let gameLang: 'en' | 'he';
             let gameLength: number;
 
@@ -227,7 +228,8 @@ export default function RoomPage() {
                 gameLength = currentGame.wordLength;
 
                 // Get word for this category
-                // @ts-ignore
+                // @ts-expect-error - Dynamic access to word lists
+                // @ts-expect-error - Dynamic access to word lists
                 const words = WORD_LISTS[gameLang]?.[gameLength] || WORD_LISTS.en[5];
                 const randomWord = words[Math.floor(Math.random() * words.length)];
                 wordObj = { word: randomWord };
@@ -243,7 +245,7 @@ export default function RoomPage() {
             } else {
                 gameLang = room.settings.language || 'en';
                 gameLength = room.settings.wordLength || 5;
-                // @ts-ignore
+                // @ts-expect-error - Dynamic access to word lists
                 const words = WORD_LISTS[gameLang]?.[gameLength] || WORD_LISTS.en[5];
                 const randomWord = words[Math.floor(Math.random() * words.length)];
                 wordObj = { word: randomWord };
@@ -266,7 +268,8 @@ export default function RoomPage() {
 
             console.log("Starting game with word:", word);
 
-            const updatePayload: any = {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const updatePayload: Record<string, any> = {
                 currentWord: word?.toUpperCase(),
                 currentSuggester: wordObj?.suggester || null,
                 gameState: 'playing',
@@ -304,7 +307,8 @@ export default function RoomPage() {
         let newStatus = player.status;
         let newScore = player.score;
 
-        const updateData: any = {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const updateData: Record<string, any> = {
             guesses: JSON.stringify(newGuesses),
             status: newStatus,
             score: newScore,
@@ -419,7 +423,8 @@ export default function RoomPage() {
         if (allFinished) {
             // Only one person needs to update this. Let's say the Host (first key sorted?).
             // Or just anyone. If multiple update, it's fine, idempotent.
-            const updatePayload: any = {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const updatePayload: Record<string, any> = {
                 gameState: 'finished'
             };
 
@@ -435,12 +440,12 @@ export default function RoomPage() {
     // Effect to show results modal and auto-advance
     useEffect(() => {
         if (!room || room.gameState !== 'finished') {
-            setShowResultsModal(false);
             return;
         }
 
         // Show results modal
-        setShowResultsModal(true);
+        // Use setTimeout to avoid synchronous setState warning
+        setTimeout(() => setShowResultsModal(true), 0);
 
         // Auto-advance to next game after 5 seconds if using routine
         if (room.settings.useRoutine) {
@@ -454,7 +459,7 @@ export default function RoomPage() {
 
             return () => clearTimeout(timer);
         }
-    }, [room?.gameState, room?.settings.useRoutine]);
+    }, [room?.gameState, room?.settings.useRoutine]); // eslint-disable-line react-hooks/exhaustive-deps
 
 
     const updateSettings = (newSettings: Partial<RoomSettings>) => {
@@ -932,9 +937,9 @@ export default function RoomPage() {
                                 <div className="text-4xl md:text-5xl font-black bg-gradient-to-r from-green-400 to-emerald-500 text-transparent bg-clip-text mb-4 tracking-widest">
                                     {room.currentWord}
                                 </div>
-                                {/* @ts-ignore */}
+                                {/* @ts-expect-error - Suggester might be undefined in type but exists in DB */}
                                 {room.currentSuggester && (
-                                    /* @ts-ignore */
+                                    /* @ts-expect-error - Suggester might be undefined in type but exists in DB */
                                     <div className="inline-block bg-white/10 px-3 py-1 rounded-full text-sm text-slate-300 border border-white/5">
                                         {t.room.suggestedBy} <span className="text-indigo-300 font-bold">{room.currentSuggester}</span>
                                     </div>

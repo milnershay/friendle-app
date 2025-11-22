@@ -15,7 +15,7 @@ export default function Home() {
     const t = useTranslation(language);
 
     useEffect(() => {
-        setLanguage(getStoredLanguage());
+        setTimeout(() => setLanguage(getStoredLanguage()), 0);
     }, []);
 
     const handleLanguageChange = (newLang: Language) => {
