@@ -121,6 +121,7 @@ export default function RoomPage() {
     const [showStats, setShowStats] = useState(false);
     const [routineLang, setRoutineLang] = useState<'en' | 'he'>('en');
     const [routineLength, setRoutineLength] = useState<4 | 5 | 6>(5);
+    const [showResultsModal, setShowResultsModal] = useState(false);
     const t = useTranslation(language);
 
     useEffect(() => {
@@ -416,11 +417,42 @@ export default function RoomPage() {
         if (allFinished) {
             // Only one person needs to update this. Let's say the Host (first key sorted?).
             // Or just anyone. If multiple update, it's fine, idempotent.
-            update(ref(db, `rooms/${roomId}`), {
+            const updatePayload: any = {
                 gameState: 'finished'
-            });
+            };
+
+            // Increment daily round if using routine
+            if (room.settings.useRoutine) {
+                updatePayload.dailyRound = (room.dailyRound || 0) + 1;
+            }
+
+            update(ref(db, `rooms/${roomId}`), updatePayload);
         }
     }, [room, roomId]);
+
+    // Effect to show results modal and auto-advance
+    useEffect(() => {
+        if (!room || room.gameState !== 'finished') {
+            setShowResultsModal(false);
+            return;
+        }
+
+        // Show results modal
+        setShowResultsModal(true);
+
+        // Auto-advance to next game after 5 seconds if using routine
+        if (room.settings.useRoutine) {
+            const timer = setTimeout(() => {
+                setShowResultsModal(false);
+                // Small delay before starting next game for smooth transition
+                setTimeout(() => {
+                    startGame();
+                }, 500);
+            }, 5000);
+
+            return () => clearTimeout(timer);
+        }
+    }, [room?.gameState, room?.settings.useRoutine]);
 
 
     const updateSettings = (newSettings: Partial<RoomSettings>) => {
@@ -601,6 +633,11 @@ export default function RoomPage() {
                     </div>
                     <p className="text-slate-400 text-sm flex items-center gap-2">
                         {t.room.roomCode}: <span className="font-mono text-white bg-white/10 px-2 py-1 rounded select-all border border-white/5">{roomId}</span>
+                        {room.settings.useRoutine && room.dailyRound && (
+                            <span className="text-xs bg-purple-500/20 text-purple-300 px-2 py-1 rounded border border-purple-500/20">
+                                Round {room.dailyRound}
+                            </span>
+                        )}
                     </p>
                 </div>
 
@@ -608,6 +645,11 @@ export default function RoomPage() {
                 <div className="md:hidden mb-6 p-4 bg-white/5 rounded-xl text-center border border-white/5">
                     <p className="text-slate-400 text-xs uppercase tracking-widest mb-1">{t.room.roomCode}</p>
                     <p className="text-3xl font-mono font-bold select-all tracking-wider">{roomId}</p>
+                    {room.settings.useRoutine && room.dailyRound && (
+                        <p className="text-xs text-purple-300 mt-2 bg-purple-500/20 px-2 py-1 rounded inline-block border border-purple-500/20">
+                            Round {room.dailyRound}
+                        </p>
+                    )}
                 </div>
 
                 <div className="flex-1 overflow-y-auto custom-scrollbar">
@@ -909,6 +951,121 @@ export default function RoomPage() {
                     </div>
                 )}
             </div>
+
+            {/* Results Modal */}
+            {showResultsModal && room && (
+                <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-300">
+                    <div className="glass max-w-2xl w-full rounded-2xl p-6 md:p-8 border border-white/20 animate-in zoom-in duration-300">
+                        <div className="text-center mb-6">
+                            <h2 className="text-3xl md:text-4xl font-black mb-2 text-white">
+                                {t.room.gameOver}
+                            </h2>
+                            {room.settings.useRoutine && (
+                                <p className="text-sm text-slate-400 mb-2">
+                                    Round {room.dailyRound || 1} • Game {((room.routineIndex || 1) % (room.settings.dailyRoutine?.length || 1)) + 1} of {room.settings.dailyRoutine?.length || 1}
+                                </p>
+                            )}
+                            <p className="text-xl text-slate-300 mb-2">{t.room.theWordWas}</p>
+                            <div className="text-4xl md:text-5xl font-black bg-gradient-to-r from-green-400 to-emerald-500 text-transparent bg-clip-text mb-4 tracking-widest">
+                                {room.currentWord}
+                            </div>
+                        </div>
+
+                        <div className="space-y-3 mb-6">
+                            {playerList
+                                .sort((a, b) => {
+                                    // Winners first, then by guess count, then by time
+                                    if (a.status === 'won' && b.status !== 'won') return -1;
+                                    if (a.status !== 'won' && b.status === 'won') return 1;
+                                    if (a.status === 'won' && b.status === 'won') {
+                                        const aGuesses = parseGuesses(a.guesses).length;
+                                        const bGuesses = parseGuesses(b.guesses).length;
+                                        if (aGuesses !== bGuesses) return aGuesses - bGuesses;
+                                        return (a.timeTaken || 999999) - (b.timeTaken || 999999);
+                                    }
+                                    return 0;
+                                })
+                                .map((player, index) => {
+                                    const guessCount = parseGuesses(player.guesses).length;
+                                    const isWinner = player.status === 'won';
+                                    return (
+                                        <div
+                                            key={player.id}
+                                            className={`flex items-center justify-between p-4 rounded-xl border transition-all ${
+                                                isWinner
+                                                    ? 'bg-green-500/10 border-green-500/30'
+                                                    : 'bg-white/5 border-white/10'
+                                            }`}
+                                        >
+                                            <div className="flex items-center gap-3">
+                                                <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${
+                                                    isWinner
+                                                        ? 'bg-green-500/20 text-green-400'
+                                                        : 'bg-white/10 text-slate-400'
+                                                }`}>
+                                                    {index + 1}
+                                                </div>
+                                                <div>
+                                                    <div className="font-bold text-white">{player.username}</div>
+                                                    <div className="text-xs text-slate-400">
+                                                        {isWinner
+                                                            ? `${guessCount} ${guessCount === 1 ? 'guess' : 'guesses'}`
+                                                            : 'Did not solve'
+                                                        }
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div className="text-right">
+                                                {isWinner && player.timeTaken && (
+                                                    <div className="text-sm font-mono text-slate-300">
+                                                        {player.timeTaken.toFixed(1)}s
+                                                    </div>
+                                                )}
+                                                {isWinner && (
+                                                    <div className="text-xs text-green-400">✓ Won</div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                        </div>
+
+                        {room.settings.useRoutine ? (
+                            <div className="text-center">
+                                <p className="text-sm text-slate-400 mb-3">
+                                    Next game starting in a few seconds...
+                                </p>
+                                <div className="flex gap-2 justify-center">
+                                    <button
+                                        onClick={() => {
+                                            setShowResultsModal(false);
+                                            setTimeout(() => startGame(), 300);
+                                        }}
+                                        className="bg-green-500/20 hover:bg-green-500/30 text-green-400 font-bold py-2 px-6 rounded-lg transition-all border border-green-500/20"
+                                    >
+                                        Start Now
+                                    </button>
+                                    <button
+                                        onClick={() => setShowResultsModal(false)}
+                                        className="bg-white/10 hover:bg-white/20 text-white font-bold py-2 px-6 rounded-lg transition-all border border-white/10"
+                                    >
+                                        Close
+                                    </button>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="text-center">
+                                <button
+                                    onClick={() => setShowResultsModal(false)}
+                                    className="bg-white/10 hover:bg-white/20 text-white font-bold py-3 px-8 rounded-lg transition-all border border-white/10"
+                                >
+                                    Close
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
         </main>
     );
 }
