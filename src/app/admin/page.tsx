@@ -12,6 +12,7 @@ import { useRouter } from "next/navigation";
  * @returns The rendered Admin page.
  */
 export default function AdminPage() {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const [stats, setStats] = useState<any>(null);
     const [loading, setLoading] = useState(false);
     const [result, setResult] = useState<string>("");
@@ -31,7 +32,7 @@ export default function AdminPage() {
             const response = await fetch('/api/admin/auth');
             const data = await response.json();
             setIsAuthenticated(data.authenticated);
-        } catch (error) {
+        } catch {
             setIsAuthenticated(false);
         } finally {
             setCheckingAuth(false);
@@ -59,7 +60,7 @@ export default function AdminPage() {
                 setAuthError("Incorrect password");
                 setPassword("");
             }
-        } catch (error) {
+        } catch {
             setAuthError("Authentication failed. Please try again.");
         } finally {
             setLoading(false);
@@ -69,7 +70,7 @@ export default function AdminPage() {
     const handleLogout = async () => {
         try {
             await fetch('/api/admin/auth', { method: 'DELETE' });
-        } catch (error) {
+        } catch {
             // Ignore error
         }
         setIsAuthenticated(false);
@@ -247,7 +248,7 @@ export default function AdminPage() {
                 <div className="glass p-6 rounded-2xl mb-6">
                     <h2 className="text-xl font-bold mb-4 text-red-400">Cleanup Old Rooms</h2>
                     <p className="text-sm text-slate-400 mb-4">
-                        Remove rooms that haven't been updated in the specified time period and have no scores.
+                        Remove rooms that haven&apos;t been updated in the specified time period and have no scores.
                     </p>
 
                     <div className="grid grid-cols-3 gap-3">

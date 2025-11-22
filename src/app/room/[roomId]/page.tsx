@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
 import { db } from "@/lib/firebase";
-import { ref, onValue, set, update, get, onDisconnect } from "firebase/database";
+import { ref, onValue, set, update, get } from "firebase/database";
 import GameBoard from "@/components/game/GameBoard";
 import { WORD_LISTS } from "@/lib/wordLists";
 import { useTranslation, getStoredLanguage, type Language } from "@/lib/i18n";
@@ -210,17 +210,12 @@ export default function RoomPage() {
     const t = useTranslation(language);
 
     useEffect(() => {
+        // Avoid calling setState synchronously in effect if possible,
+        // but here we are syncing with local storage on mount.
         setLanguage(getStoredLanguage());
     }, []);
 
     // We need a stable ID for the user. 
-    // In Firebase, we can generate one or use auth. 
-    // For this anonymous app, let's generate one and store in localStorage, 
-    // OR just use username as key if we trust it's unique enough for friends.
-    // Let's use a random ID but persist it in session/local storage? 
-    // Actually, for simplicity, let's generate a random ID on mount and keep it in ref.
-    // If they refresh, they get a new ID? That breaks reconnection.
-    // Let's use localStorage to persist ID for this room.
     const [userId, setUserId] = useState<string>("");
 
     useEffect(() => {
@@ -238,7 +233,6 @@ export default function RoomPage() {
         setUserId(storedId);
 
         const roomRef = ref(db, `rooms/${roomId}`);
-        const playerRef = ref(db, `rooms/${roomId}/players/${storedId}`);
 
         // Subscribe to room updates
         const unsubscribe = onValue(roomRef, (snapshot) => {
@@ -351,6 +345,7 @@ export default function RoomPage() {
 
             console.log("Starting game with word:", word);
 
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const updatePayload: any = {
                 currentWord: word?.toUpperCase(),
                 currentSuggester: wordObj?.suggester || null,
@@ -389,6 +384,7 @@ export default function RoomPage() {
         let newStatus = player.status;
         let newScore = player.score;
 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const updateData: any = {
             guesses: JSON.stringify(newGuesses),
             status: newStatus,
@@ -502,6 +498,7 @@ export default function RoomPage() {
         if (allFinished) {
             // Only one person needs to update this. Let's say the Host (first key sorted?).
             // Or just anyone. If multiple update, it's fine, idempotent.
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const updatePayload: any = {
                 gameState: 'finished'
             };
@@ -518,12 +515,16 @@ export default function RoomPage() {
     // Effect to show results modal and auto-advance
     useEffect(() => {
         if (!room || room.gameState !== 'finished') {
-            setShowResultsModal(false);
+            if (showResultsModal) {
+                 setShowResultsModal(false);
+            }
             return;
         }
 
         // Show results modal
-        setShowResultsModal(true);
+        if (!showResultsModal) {
+            setShowResultsModal(true);
+        }
 
         // Auto-advance to next game after 5 seconds if using routine
         if (room.settings.useRoutine) {
@@ -537,6 +538,7 @@ export default function RoomPage() {
 
             return () => clearTimeout(timer);
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [room?.gameState, room?.settings.useRoutine]);
 
 

@@ -2,8 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { db } from "@/lib/firebase";
-import { ref, set, get } from "firebase/database";
 import { useTranslation, getStoredLanguage, setStoredLanguage, type Language } from "@/lib/i18n";
 import { validateUsername, validateRoomCode, sanitizeText, checkRateLimit, getRateLimitKey } from "@/lib/validation";
 
@@ -22,7 +20,12 @@ export default function Home() {
     const t = useTranslation(language);
 
     useEffect(() => {
-        setLanguage(getStoredLanguage());
+        // Sync with local storage on mount.
+        const stored = getStoredLanguage();
+        if (stored) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect
+            setLanguage(stored);
+        }
     }, []);
 
     const handleLanguageChange = (newLang: Language) => {

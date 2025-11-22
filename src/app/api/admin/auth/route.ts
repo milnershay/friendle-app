@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({ success: false, error: 'Invalid password' }, { status: 401 });
-  } catch (error) {
+  } catch {
     return NextResponse.json({ success: false, error: 'Invalid request' }, { status: 400 });
   }
 }
@@ -45,6 +45,7 @@ export async function POST(request: NextRequest) {
  * @param request - The incoming request.
  * @returns A JSON response with the authentication status.
  */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export async function GET(request: NextRequest) {
   try {
     const cookieStore = await cookies();
@@ -67,7 +68,7 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json({ authenticated: false }, { status: 401 });
-  } catch (error) {
+  } catch {
     return NextResponse.json({ authenticated: false }, { status: 401 });
   }
 }
@@ -79,6 +80,7 @@ export async function GET(request: NextRequest) {
  * @param request - The incoming request.
  * @returns A JSON response indicating success.
  */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export async function DELETE(request: NextRequest) {
   const cookieStore = await cookies();
   cookieStore.delete('admin_session');
