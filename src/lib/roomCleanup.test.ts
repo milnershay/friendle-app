@@ -1,6 +1,6 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, type Mock } from 'vitest';
 import { cleanupOldRooms, deleteRoom, getRoomStats } from './roomCleanup';
-import { ref, get, remove } from 'firebase/database';
+import { get, remove } from 'firebase/database';
 
 // Mock firebase
 vi.mock('@/lib/firebase', () => ({
@@ -21,7 +21,7 @@ describe('roomCleanup', () => {
 
     describe('cleanupOldRooms', () => {
         it('handles no rooms', async () => {
-            (get as any).mockResolvedValue({
+            (get as Mock).mockResolvedValue({
                 exists: () => false,
             });
 
@@ -39,7 +39,7 @@ describe('roomCleanup', () => {
                 'room2': { startTime: now, players: {} }, // New and empty -> keep
             };
 
-            (get as any).mockResolvedValue({
+            (get as Mock).mockResolvedValue({
                 exists: () => true,
                 val: () => rooms,
             });
@@ -72,7 +72,7 @@ describe('roomCleanup', () => {
                  }, // Old but has scores -> keep (active game essentially)
              };
 
-             (get as any).mockResolvedValue({
+             (get as Mock).mockResolvedValue({
                  exists: () => true,
                  val: () => rooms,
              });
@@ -86,7 +86,7 @@ describe('roomCleanup', () => {
 
     describe('deleteRoom', () => {
         it('deletes a specific room', async () => {
-            (remove as any).mockResolvedValue(undefined);
+            (remove as Mock).mockResolvedValue(undefined);
 
             const result = await deleteRoom('room123');
             expect(result).toBe(true);
@@ -94,7 +94,7 @@ describe('roomCleanup', () => {
         });
 
         it('handles errors', async () => {
-            (remove as any).mockRejectedValue(new Error('Delete failed'));
+            (remove as Mock).mockRejectedValue(new Error('Delete failed'));
 
             const result = await deleteRoom('room123');
             expect(result).toBe(false);
@@ -112,7 +112,7 @@ describe('roomCleanup', () => {
                 'room3': { startTime: now, players: {} }, // Active, 0 players
             };
 
-            (get as any).mockResolvedValue({
+            (get as Mock).mockResolvedValue({
                 exists: () => true,
                 val: () => rooms,
             });
@@ -127,7 +127,7 @@ describe('roomCleanup', () => {
         });
 
         it('handles empty DB', async () => {
-            (get as any).mockResolvedValue({
+            (get as Mock).mockResolvedValue({
                 exists: () => false,
             });
 
