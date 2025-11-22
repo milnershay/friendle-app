@@ -18,13 +18,13 @@ export default function Home() {
   const t = useTranslation(language)
 
   useEffect(() => {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setLanguage(getStoredLanguage());
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setLanguage(getStoredLanguage());
   }, []);
 
   const handleLanguageChange = (newLang: Language) => {
-      setLanguage(newLang);
-      setStoredLanguage(newLang);
+    setLanguage(newLang);
+    setStoredLanguage(newLang);
   };
 
   const keyboardRows = [
@@ -75,13 +75,13 @@ export default function Home() {
     const sanitizedUsername = sanitizeText(username)
     const usernameValidation = validateUsername(sanitizedUsername)
     if (!usernameValidation.valid) {
-        return alert(usernameValidation.error)
+      return alert(usernameValidation.error)
     }
 
     const rateLimitKey = getRateLimitKey('create_room')
     const rateLimit = checkRateLimit(rateLimitKey, 5, 60000)
     if (!rateLimit.allowed) {
-        return alert(`Too many rooms created. Please try again in ${rateLimit.retryAfter} seconds`)
+      return alert(`Too many rooms created. Please try again in ${rateLimit.retryAfter} seconds`)
     }
 
     const newRoomId = Math.random().toString(36).substring(2, 8).toUpperCase()
@@ -92,13 +92,13 @@ export default function Home() {
     const sanitizedUsername = sanitizeText(username)
     const usernameValidation = validateUsername(sanitizedUsername)
     if (!usernameValidation.valid) {
-        return alert(usernameValidation.error)
+      return alert(usernameValidation.error)
     }
 
     const sanitizedRoomId = sanitizeText(roomCode)
     const roomValidation = validateRoomCode(sanitizedRoomId)
     if (!roomValidation.valid) {
-        return alert(roomValidation.error)
+      return alert(roomValidation.error)
     }
 
     router.push(`/room/${sanitizedRoomId.toUpperCase()}?username=${encodeURIComponent(sanitizedUsername)}`)
@@ -109,18 +109,18 @@ export default function Home() {
 
       {/* Language Switcher */}
       <div className="absolute top-4 right-4 z-50 flex gap-2">
-          <button
-             onClick={() => handleLanguageChange('en')}
-             className={`px-3 py-1 rounded-full text-xs font-bold transition-all duration-300 border border-white/10 ${language === 'en' ? 'bg-white text-slate-950 shadow-[0_0_15px_rgba(255,255,255,0.3)]' : 'bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white'}`}
-          >
-            EN
-          </button>
-          <button
-             onClick={() => handleLanguageChange('he')}
-             className={`px-3 py-1 rounded-full text-xs font-bold transition-all duration-300 border border-white/10 ${language === 'he' ? 'bg-white text-slate-950 shadow-[0_0_15px_rgba(255,255,255,0.3)]' : 'bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white'}`}
-          >
-            HE
-          </button>
+        <button
+          onClick={() => handleLanguageChange('en')}
+          className={`px-3 py-1 rounded-full text-xs font-bold transition-all duration-300 border border-white/10 ${language === 'en' ? 'bg-white text-slate-950 shadow-[0_0_15px_rgba(255,255,255,0.3)]' : 'bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white'}`}
+        >
+          EN
+        </button>
+        <button
+          onClick={() => handleLanguageChange('he')}
+          className={`px-3 py-1 rounded-full text-xs font-bold transition-all duration-300 border border-white/10 ${language === 'he' ? 'bg-white text-slate-950 shadow-[0_0_15px_rgba(255,255,255,0.3)]' : 'bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white'}`}
+        >
+          HE
+        </button>
       </div>
 
       <div className="fixed inset-0 z-0">
@@ -173,10 +173,11 @@ export default function Home() {
 
               <div className="space-y-6">
                 <div>
-                  <label className="block text-xs font-bold text-slate-400 mb-3 uppercase tracking-widest">
+                  <label htmlFor="username" className="block text-xs font-bold text-slate-400 mb-3 uppercase tracking-widest">
                     {t.home.username}
                   </label>
                   <Input
+                    id="username"
                     type="text"
                     placeholder={t.home.usernamePlaceholder}
                     value={username}
@@ -204,11 +205,12 @@ export default function Home() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-400 mb-3 uppercase tracking-widest">
+                  <label htmlFor="room-code" className="block text-xs font-bold text-slate-400 mb-3 uppercase tracking-widest">
                     {t.home.or} {t.home.roomCode}
                   </label>
                   <div className="flex gap-3">
                     <Input
+                      id="room-code"
                       type="text"
                       placeholder={t.home.roomCodePlaceholder}
                       value={roomCode}
@@ -252,12 +254,11 @@ export default function Home() {
                       <div
                         key={cellIndex}
                         className={`h-14 w-14 md:h-[64px] md:w-[64px] rounded-xl md:rounded-2xl flex items-center justify-center text-2xl md:text-3xl font-bold transition-all duration-500 transform hover:scale-105 cursor-default select-none
-                          ${
-                            cell.state === "correct"
-                              ? "bg-gradient-to-b from-emerald-500 to-emerald-600 text-white shadow-[0_4px_12px_rgba(16,185,129,0.4),inset_0_1px_1px_rgba(255,255,255,0.4)] border-0"
-                              : cell.state === "present"
-                                ? "bg-gradient-to-b from-amber-400 to-orange-500 text-white shadow-[0_4px_12px_rgba(245,158,11,0.4),inset_0_1px_1px_rgba(255,255,255,0.4)] border-0"
-                                : "bg-white/[0.03] backdrop-blur-sm border border-white/5 text-white shadow-[inset_0_1px_1px_rgba(255,255,255,0.1)]"
+                          ${cell.state === "correct"
+                            ? "bg-gradient-to-b from-emerald-500 to-emerald-600 text-white shadow-[0_4px_12px_rgba(16,185,129,0.4),inset_0_1px_1px_rgba(255,255,255,0.4)] border-0"
+                            : cell.state === "present"
+                              ? "bg-gradient-to-b from-amber-400 to-orange-500 text-white shadow-[0_4px_12px_rgba(245,158,11,0.4),inset_0_1px_1px_rgba(255,255,255,0.4)] border-0"
+                              : "bg-white/[0.03] backdrop-blur-sm border border-white/5 text-white shadow-[inset_0_1px_1px_rgba(255,255,255,0.1)]"
                           }
                         `}
                       >
@@ -288,12 +289,11 @@ export default function Home() {
                         className={`
                           h-12 md:h-14 rounded-lg md:rounded-xl font-bold text-xs md:text-sm transition-all duration-150 active:scale-95 select-none flex items-center justify-center shadow-[0_2px_0_rgba(0,0,0,0.2)]
                           ${key.length > 1 ? "px-3 md:px-4 text-[10px] md:text-xs w-auto" : "w-8 md:w-10"}
-                          ${
-                            ["A", "E", "L", "P", "S"].includes(key)
-                              ? "bg-slate-700 text-white hover:bg-slate-600"
-                              : ["N"].includes(key)
-                                ? "bg-emerald-500 text-white shadow-[0_0_15px_rgba(16,185,129,0.4)]"
-                                : "bg-white/10 text-white hover:bg-white/20"
+                          ${["A", "E", "L", "P", "S"].includes(key)
+                            ? "bg-slate-700 text-white hover:bg-slate-600"
+                            : ["N"].includes(key)
+                              ? "bg-emerald-500 text-white shadow-[0_0_15px_rgba(16,185,129,0.4)]"
+                              : "bg-white/10 text-white hover:bg-white/20"
                           }
                         `}
                       >
@@ -326,10 +326,9 @@ export default function Home() {
                       <div className="flex items-center gap-4">
                         <div
                           className={`h-10 w-10 rounded-xl flex items-center justify-center font-bold text-sm
-                            ${
-                              index === 0
-                                ? "bg-gradient-to-br from-amber-300 to-orange-400 text-white shadow-lg shadow-amber-500/20"
-                                : "bg-white/5 text-slate-400"
+                            ${index === 0
+                              ? "bg-gradient-to-br from-amber-300 to-orange-400 text-white shadow-lg shadow-amber-500/20"
+                              : "bg-white/5 text-slate-400"
                             }
                           `}
                         >

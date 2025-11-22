@@ -24,7 +24,7 @@ test('game flow', async ({ page }) => {
     await usernameInput.fill('TestUser');
 
     // Click Create Room
-    const createButton = page.getByRole('button', { name: 'Create New Room' });
+    const createButton = page.getByRole('button', { name: 'Create Room' });
     await createButton.waitFor({ state: 'visible' });
     await createButton.click();
 
