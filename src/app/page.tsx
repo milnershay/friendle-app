@@ -7,6 +7,13 @@ import { ref, set, get } from "firebase/database";
 import { useTranslation, getStoredLanguage, setStoredLanguage, type Language } from "@/lib/i18n";
 import { validateUsername, validateRoomCode, sanitizeText, checkRateLimit, getRateLimitKey } from "@/lib/validation";
 
+/**
+ * The Home page component.
+ * Allows users to create a new room or join an existing one.
+ * Handles username validation and rate limiting.
+ *
+ * @returns The rendered Home page.
+ */
 export default function Home() {
     const [username, setUsername] = useState("");
     const [roomId, setRoomId] = useState("");

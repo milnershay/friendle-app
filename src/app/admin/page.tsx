@@ -4,6 +4,13 @@ import { useState, useEffect } from "react";
 import { cleanupOldRooms, getRoomStats } from "@/lib/roomCleanup";
 import { useRouter } from "next/navigation";
 
+/**
+ * The Admin page component.
+ * Allows administrators to view room statistics and perform cleanup operations.
+ * Requires authentication via a secure server-side session.
+ *
+ * @returns The rendered Admin page.
+ */
 export default function AdminPage() {
     const [stats, setStats] = useState<any>(null);
     const [loading, setLoading] = useState(false);

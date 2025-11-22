@@ -8,22 +8,42 @@ import GameBoard from "@/components/game/GameBoard";
 import { WORD_LISTS } from "@/lib/wordLists";
 import { useTranslation, getStoredLanguage, type Language } from "@/lib/i18n";
 
+/**
+ * Interface representing a single game record in a player's history.
+ */
 interface GameHistory {
-    date: number; // timestamp
+    /** The timestamp of the game. */
+    date: number;
+    /** The language of the game ('en' or 'he'). */
     language: 'en' | 'he';
+    /** The word length of the game. */
     wordLength: number;
-    guessCount: number; // how many guesses it took
-    timeTaken: number; // seconds
+    /** The number of guesses it took to solve. */
+    guessCount: number;
+    /** The time taken to solve in seconds. */
+    timeTaken: number;
+    /** Whether the player won the game. */
     won: boolean;
 }
 
+/**
+ * Interface representing statistics for a specific game category.
+ */
 interface CategoryStats {
+    /** Total games played in this category. */
     games: number;
+    /** Average number of guesses per game. */
     avgGuesses: number;
+    /** Average time taken per game in seconds. */
     avgTime: number;
+    /** Total number of wins. */
     wins: number;
 }
 
+/**
+ * Interface representing a player's statistics across different categories.
+ * Keys are formatted as 'language-length' (e.g., 'en-5').
+ */
 interface PlayerStats {
     'en-4'?: CategoryStats;
     'en-5'?: CategoryStats;
@@ -33,19 +53,36 @@ interface PlayerStats {
     'he-6'?: CategoryStats;
 }
 
+/**
+ * Interface representing a player in the room.
+ */
 interface Player {
+    /** Unique identifier for the player. */
     id: string;
+    /** Display name of the player. */
     username: string;
+    /** Current score of the player. */
     score: number;
+    /** Current status of the player in the game. */
     status: 'waiting' | 'playing' | 'won' | 'lost';
-    guesses?: string; // Stored as JSON string in Firebase
+    /** JSON stringified array of guesses made by the player. */
+    guesses?: string;
+    /** Time taken to finish the game (in seconds). */
     timeTaken?: number;
+    /** Timestamp when the player finished the game. */
     endTime?: number;
-    history?: string; // Stored as JSON string - GameHistory[]
-    stats?: string; // Stored as JSON string - PlayerStats
+    /** JSON stringified array of GameHistory objects. */
+    history?: string;
+    /** JSON stringified PlayerStats object. */
+    stats?: string;
 }
 
-// Helper function to parse guesses from Firebase
+/**
+ * Helper function to parse guesses from a JSON string.
+ *
+ * @param guesses - The JSON string of guesses.
+ * @returns An array of guess strings.
+ */
 const parseGuesses = (guesses?: string): string[] => {
     if (!guesses) return [];
     try {
@@ -55,7 +92,12 @@ const parseGuesses = (guesses?: string): string[] => {
     }
 };
 
-// Helper function to parse history
+/**
+ * Helper function to parse history from a JSON string.
+ *
+ * @param history - The JSON string of history.
+ * @returns An array of GameHistory objects.
+ */
 const parseHistory = (history?: string): GameHistory[] => {
     if (!history) return [];
     try {
@@ -65,7 +107,12 @@ const parseHistory = (history?: string): GameHistory[] => {
     }
 };
 
-// Helper function to parse stats
+/**
+ * Helper function to parse stats from a JSON string.
+ *
+ * @param stats - The JSON string of stats.
+ * @returns A PlayerStats object.
+ */
 const parseStats = (stats?: string): PlayerStats => {
     if (!stats) return {};
     try {
@@ -75,39 +122,77 @@ const parseStats = (stats?: string): PlayerStats => {
     }
 };
 
-// Helper to get category key
+/**
+ * Helper to generate a category key for statistics.
+ *
+ * @param lang - The language code.
+ * @param length - The word length.
+ * @returns The category key string (e.g., 'en-5').
+ */
 const getCategoryKey = (lang: 'en' | 'he', length: number): keyof PlayerStats => {
     return `${lang}-${length}` as keyof PlayerStats;
 };
 
+/**
+ * Interface representing a single game configuration in a routine.
+ */
 interface RoutineGame {
     language: 'en' | 'he';
     wordLength: 4 | 5 | 6;
 }
 
+/**
+ * Interface representing the settings for a room.
+ */
 interface RoomSettings {
+    /** The length of words for new games. */
     wordLength: number;
+    /** Queue of custom words added by players. */
     customQueue: { word: string; suggester: string }[];
+    /** Maximum number of guesses allowed. Defaults to 6. */
     maxGuesses?: number;
+    /** The language for new games. */
     language: 'en' | 'he';
-    dailyRoutine?: RoutineGame[]; // NEW: Custom game sequence
-    useRoutine?: boolean; // NEW: Whether to use daily routine
+    /** Custom sequence of games (Daily Routine). */
+    dailyRoutine?: RoutineGame[];
+    /** Whether to use the daily routine. */
+    useRoutine?: boolean;
 }
 
+/**
+ * Interface representing the full state of a room.
+ */
 interface RoomData {
+    /** Unique identifier for the room. */
     id: string;
-    players: Record<string, Player>; // Firebase uses objects for lists usually
+    /** Map of player IDs to Player objects. */
+    players: Record<string, Player>;
+    /** Current state of the game in the room. */
     gameState: 'waiting' | 'playing' | 'finished';
+    /** The current target word (if playing/finished). */
     currentWord: string | null;
+    /** The name of the player who suggested the current word (if applicable). */
     currentSuggester?: string | null;
+    /** Timestamp when the game started. */
     startTime: number;
+    /** Room configuration settings. */
     settings: RoomSettings;
+    /** Active queue of custom words to play. */
     wordQueue: { word: string; suggester: string }[];
-    routineIndex?: number; // NEW: Current position in daily routine
-    dailyRound?: number; // NEW: Which round today (resets daily)
-    lastResetDate?: string; // NEW: ISO date for tracking daily resets
+    /** Current index in the daily routine sequence. */
+    routineIndex?: number;
+    /** Current daily round number. */
+    dailyRound?: number;
+    /** ISO date string of the last daily reset. */
+    lastResetDate?: string;
 }
 
+/**
+ * The Room page component.
+ * Manages the game logic, real-time synchronization with Firebase, and UI for the game room.
+ *
+ * @returns The rendered Room page.
+ */
 export default function RoomPage() {
     const { roomId } = useParams();
     const searchParams = useSearchParams();
@@ -212,7 +297,7 @@ export default function RoomPage() {
 
         try {
             let wordObj: { word: string; suggester?: string } | undefined;
-            let newQueue = [...(room.wordQueue || [])];
+            const newQueue = [...(room.wordQueue || [])];
             let gameLang: 'en' | 'he';
             let gameLength: number;
 
@@ -227,7 +312,7 @@ export default function RoomPage() {
                 gameLength = currentGame.wordLength;
 
                 // Get word for this category
-                // @ts-ignore
+                // @ts-expect-error - Dictionary indexing might be tricky with dynamic keys
                 const words = WORD_LISTS[gameLang]?.[gameLength] || WORD_LISTS.en[5];
                 const randomWord = words[Math.floor(Math.random() * words.length)];
                 wordObj = { word: randomWord };
@@ -243,7 +328,7 @@ export default function RoomPage() {
             } else {
                 gameLang = room.settings.language || 'en';
                 gameLength = room.settings.wordLength || 5;
-                // @ts-ignore
+                // @ts-expect-error - Dictionary indexing might be tricky with dynamic keys
                 const words = WORD_LISTS[gameLang]?.[gameLength] || WORD_LISTS.en[5];
                 const randomWord = words[Math.floor(Math.random() * words.length)];
                 wordObj = { word: randomWord };
@@ -930,9 +1015,7 @@ export default function RoomPage() {
                                 <div className="text-4xl md:text-5xl font-black bg-gradient-to-r from-green-400 to-emerald-500 text-transparent bg-clip-text mb-4 tracking-widest">
                                     {room.currentWord}
                                 </div>
-                                {/* @ts-ignore */}
                                 {room.currentSuggester && (
-                                    /* @ts-ignore */
                                     <div className="inline-block bg-white/10 px-3 py-1 rounded-full text-sm text-slate-300 border border-white/5">
                                         {t.room.suggestedBy} <span className="text-indigo-300 font-bold">{room.currentSuggester}</span>
                                     </div>

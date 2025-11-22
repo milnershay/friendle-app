@@ -14,6 +14,11 @@ const firebaseConfig = {
 
 // Initialize Firebase
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+
+/**
+ * The initialized Firebase Realtime Database instance.
+ * Use this to interact with the database.
+ */
 const db = getDatabase(app);
 
 export { db };

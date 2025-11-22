@@ -1,3 +1,7 @@
+/**
+ * Collection of word lists organized by language and word length.
+ * Each list contains valid words for the game.
+ */
 export const WORD_LISTS = {
     en: {
         4: [
@@ -70,6 +74,10 @@ export const WORD_LISTS = {
     }
 };
 
+/**
+ * Alphabets for supported languages.
+ * Used for validation and other language-specific logic.
+ */
 export const ALPHABETS = {
     en: ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z'],
     he: ['א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ז', 'ח', 'ט', 'י', 'כ', 'ל', 'מ', 'נ', 'ס', 'ע', 'פ', 'צ', 'ק', 'ר', 'ש', 'ת']
