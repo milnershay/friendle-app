@@ -1,4 +1,4 @@
-import { test, expect, Browser } from '@playwright/test';
+import { test, expect } from '@playwright/test';
 
 test.describe('Multiplayer Game Flow', () => {
     test('two players can join same room and complete a game', async ({ browser }) => {

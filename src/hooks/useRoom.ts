@@ -1,9 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
-import { useRouter } from "next/navigation";
 import { db } from "@/lib/firebase";
-import { ref, onValue, set, update, get, runTransaction, onDisconnect } from "firebase/database";
+import { ref, onValue, set, update, get, runTransaction } from "firebase/database";
 import { WORD_LISTS } from "@/lib/wordLists";
-import { getStoredLanguage, type Language } from "@/lib/i18n";
 
 // --- Types (Moved from page.tsx) ---
 
@@ -97,7 +95,6 @@ const getCategoryKey = (lang: 'en' | 'he', length: number): keyof PlayerStats =>
 // --- Hook ---
 
 export function useRoom(roomId: string, username: string | null) {
-    const router = useRouter();
     const [room, setRoom] = useState<RoomData | null>(null);
     const [userId, setUserId] = useState<string>("");
     const [error, setError] = useState("");
@@ -266,6 +263,26 @@ export function useRoom(roomId: string, username: string | null) {
         }
     }, [room, roomId]);
 
+    const checkGameOver = useCallback(async () => {
+        // Fetch fresh state to be sure
+        const snapshot = await get(ref(db, `rooms/${roomId}`));
+        const freshRoom = snapshot.val() as RoomData;
+        if (!freshRoom || freshRoom.gameState !== 'playing') return;
+
+        const players = Object.values(freshRoom.players || {});
+        const allFinished = players.every(p => p.status === 'won' || p.status === 'lost');
+
+        if (allFinished) {
+            const updatePayload: Record<string, unknown> = {
+                gameState: 'finished'
+            };
+            if (freshRoom.settings.useRoutine) {
+                updatePayload.dailyRound = (freshRoom.dailyRound || 0) + 1;
+            }
+            await update(ref(db, `rooms/${roomId}`), updatePayload);
+        }
+    }, [roomId]);
+
     const submitGuess = useCallback(async (guess: string) => {
         if (!room || room.gameState !== 'playing' || !userId) return;
 
@@ -276,7 +293,6 @@ export function useRoom(roomId: string, username: string | null) {
 
         const currentGuesses = parseGuesses(player.guesses);
         const newGuesses = [...currentGuesses, guess];
-        let newStatus = player.status;
         let newScore = player.score;
 
         const updateData: Record<string, unknown> = {
@@ -295,7 +311,6 @@ export function useRoom(roomId: string, username: string | null) {
         let finalTime = 0;
 
         if (guess === room.currentWord) {
-            newStatus = 'won';
             const endTime = Date.now();
             const startTime = firstGuessT || room.startTime;
             const timeTaken = (endTime - startTime) / 1000;
@@ -309,7 +324,6 @@ export function useRoom(roomId: string, username: string | null) {
             won = true;
             finalTime = timeTaken;
         } else if (newGuesses.length >= (room.settings.maxGuesses || 6)) {
-            newStatus = 'lost';
             updateData.status = 'lost';
             const endTime = Date.now();
             const startTime = firstGuessT || room.startTime;
@@ -378,27 +392,7 @@ export function useRoom(roomId: string, username: string | null) {
         if (gameCompleted) {
             checkGameOver();
         }
-    }, [room, roomId, userId]);
-
-    const checkGameOver = useCallback(async () => {
-        // Fetch fresh state to be sure
-        const snapshot = await get(ref(db, `rooms/${roomId}`));
-        const freshRoom = snapshot.val() as RoomData;
-        if (!freshRoom || freshRoom.gameState !== 'playing') return;
-
-        const players = Object.values(freshRoom.players || {});
-        const allFinished = players.every(p => p.status === 'won' || p.status === 'lost');
-
-        if (allFinished) {
-            const updatePayload: Record<string, unknown> = {
-                gameState: 'finished'
-            };
-            if (freshRoom.settings.useRoutine) {
-                updatePayload.dailyRound = (freshRoom.dailyRound || 0) + 1;
-            }
-            await update(ref(db, `rooms/${roomId}`), updatePayload);
-        }
-    }, [roomId]);
+    }, [room, roomId, userId, checkGameOver]);
 
     const updateSettings = useCallback(async (newSettings: Partial<RoomSettings>) => {
         await update(ref(db, `rooms/${roomId}/settings`), newSettings);

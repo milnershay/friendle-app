@@ -30,16 +30,21 @@ export default function RoomPage() {
     } = useRoom(roomId as string, username);
 
     const [activeTab, setActiveTab] = useState<'game' | 'players'>('game');
-    const [showResults, setShowResults] = useState(false);
 
-    // Auto-show results when game finishes
+    // Always call hooks at the top level
+    const [resultsDismissed, setResultsDismissed] = useState(false);
+
+    // Reset dismissed state when game state changes to playing or waiting
     useEffect(() => {
-        if (room?.gameState === 'finished') {
-            setShowResults(true);
-        } else {
-            setShowResults(false);
+        if (room?.gameState === 'waiting' || room?.gameState === 'playing') {
+            // eslint-disable-next-line react-hooks/set-state-in-effect
+            setResultsDismissed(false);
         }
     }, [room?.gameState]);
+
+    const showResults = room?.gameState === 'finished' && !resultsDismissed;
+
+    const t = useTranslation(room?.settings?.language || 'en');
 
     if (error) return (
         <div className="min-h-screen flex items-center justify-center bg-slate-900 text-white p-4">
@@ -59,8 +64,6 @@ export default function RoomPage() {
             </div>
         </div>
     );
-
-    const t = useTranslation(room.settings.language || 'en');
     const myPlayer = room.players && room.players[userId];
     const playerList = Object.values(room.players || {});
     const isHost = playerList[0]?.id === userId;
@@ -197,7 +200,7 @@ export default function RoomPage() {
             {showResults && (
                 <ResultsView
                     room={room}
-                    onClose={() => setShowResults(false)}
+                    onClose={() => setResultsDismissed(true)}
                     onStartGame={startGame}
                 />
             )}
