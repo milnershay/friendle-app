@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { db } from "@/lib/firebase";
 import { ref, set, get } from "firebase/database";
 import { useTranslation, getStoredLanguage, setStoredLanguage, type Language } from "@/lib/i18n";
+import { validateUsername, validateRoomCode, sanitizeText, checkRateLimit, getRateLimitKey } from "@/lib/validation";
 
 export default function Home() {
     const [username, setUsername] = useState("");
@@ -23,14 +24,44 @@ export default function Home() {
     };
 
     const createRoom = async () => {
-        if (!username) return alert(language === 'he' ? 'אנא הזן שם משתמש' : 'Please enter a username');
+        // Validate username
+        const sanitizedUsername = sanitizeText(username);
+        const usernameValidation = validateUsername(sanitizedUsername);
+        if (!usernameValidation.valid) {
+            return alert(usernameValidation.error);
+        }
+
+        // Rate limiting
+        const rateLimitKey = getRateLimitKey('create_room');
+        const rateLimit = checkRateLimit(rateLimitKey, 5, 60000); // 5 rooms per minute
+        if (!rateLimit.allowed) {
+            return alert(
+                language === 'he'
+                    ? `יצרת יותר מדי חדרים. נסה שוב בעוד ${rateLimit.retryAfter} שניות`
+                    : `Too many rooms created. Please try again in ${rateLimit.retryAfter} seconds`
+            );
+        }
+
         const newRoomId = Math.random().toString(36).substring(2, 8).toUpperCase();
-        router.push(`/room/${newRoomId}?username=${username}`);
+        router.push(`/room/${newRoomId}?username=${encodeURIComponent(sanitizedUsername)}`);
     };
 
     const joinRoom = async () => {
-        if (!username || !roomId) return alert(language === 'he' ? 'אנא הזן שם משתמש וקוד חדר' : 'Please enter username and room ID');
-        router.push(`/room/${roomId}?username=${username}`);
+        // Validate username
+        const sanitizedUsername = sanitizeText(username);
+        const usernameValidation = validateUsername(sanitizedUsername);
+        if (!usernameValidation.valid) {
+            return alert(usernameValidation.error);
+        }
+
+        // Validate room code
+        const sanitizedRoomId = sanitizeText(roomId);
+        const roomValidation = validateRoomCode(sanitizedRoomId);
+        if (!roomValidation.valid) {
+            return alert(roomValidation.error);
+        }
+
+        router.push(`/room/${sanitizedRoomId.toUpperCase()}?username=${encodeURIComponent(sanitizedUsername)}`);
     };
 
     return (
@@ -53,11 +84,11 @@ export default function Home() {
                 </select>
             </div>
 
-            <h1 className="text-6xl md:text-8xl font-black mb-8 md:mb-12 bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 text-transparent bg-clip-text tracking-tight drop-shadow-lg">
+            <h1 className="text-5xl md:text-8xl font-black mb-6 md:mb-12 bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 text-transparent bg-clip-text tracking-tight drop-shadow-lg text-center">
                 {t.home.title}
             </h1>
 
-            <div className="glass p-8 md:p-10 rounded-2xl shadow-2xl w-full max-w-md">
+            <div className="glass p-6 md:p-10 rounded-2xl shadow-2xl w-full max-w-md">
                 <div className="space-y-6">
                     <div>
                         <label className="block text-sm font-bold mb-2 text-slate-300 uppercase tracking-wider">{t.home.username}</label>
@@ -65,6 +96,8 @@ export default function Home() {
                             type="text"
                             value={username}
                             onChange={(e) => setUsername(e.target.value)}
+                            onKeyDown={(e) => e.key === 'Enter' && createRoom()}
+                            maxLength={30}
                             className="w-full p-4 rounded-xl bg-slate-800/50 border border-slate-600 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 focus:outline-none transition-all text-lg placeholder:text-slate-500"
                             placeholder={t.home.usernamePlaceholder}
                         />
@@ -89,6 +122,8 @@ export default function Home() {
                                 type="text"
                                 value={roomId}
                                 onChange={(e) => setRoomId(e.target.value.toUpperCase())}
+                                onKeyDown={(e) => e.key === 'Enter' && joinRoom()}
+                                maxLength={6}
                                 className="flex-1 p-4 rounded-xl bg-slate-800/50 border border-slate-600 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition-all text-lg placeholder:text-slate-500 uppercase font-mono"
                                 placeholder={t.home.roomCodePlaceholder}
                             />
@@ -103,15 +138,6 @@ export default function Home() {
                 </div>
             </div>
 
-            {/* Admin link */}
-            <div className="mt-8 text-center">
-                <a
-                    href="/admin"
-                    className="text-xs text-slate-500 hover:text-slate-400 transition-colors"
-                >
-                    {t.home.adminPanel}
-                </a>
-            </div>
         </main>
     );
 }

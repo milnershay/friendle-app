@@ -163,6 +163,35 @@ Dockerfile provided for platforms like Render or Railway.
 - Responsive mobile/desktop layouts
 - Tab-based navigation on mobile (Game/Players)
 
+## Localization (i18n)
+
+**Full app internationalization** with easy language switching:
+- All UI text stored in `src/lib/i18n.ts`
+- Language preference persists in localStorage
+- RTL support for Hebrew (and other RTL languages)
+- Easy to add new languages - see `LOCALIZATION.md`
+
+**Currently supported:**
+- English (`en`)
+- Hebrew (`he`)
+
+**To use in components:**
+```typescript
+import { useTranslation, getStoredLanguage, type Language } from '@/lib/i18n';
+const [language, setLanguage] = useState<Language>('en');
+const t = useTranslation(language);
+// Use: t.home.title, t.room.startGame, etc.
+```
+
+## Room Management
+
+**Leave Room:**
+- Desktop: Exit icon button in top-right of sidebar
+- Mobile: Back arrow in top-left of header
+- Confirms before leaving
+- Cleans up localStorage for that room
+- Returns to home page
+
 ## Path Aliases
 
 TypeScript configured with `@/*` pointing to `src/*` for imports.

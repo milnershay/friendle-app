@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { cleanupOldRooms, getRoomStats } from "@/lib/roomCleanup";
 import { useRouter } from "next/navigation";
 
@@ -8,7 +8,66 @@ export default function AdminPage() {
     const [stats, setStats] = useState<any>(null);
     const [loading, setLoading] = useState(false);
     const [result, setResult] = useState<string>("");
+    const [isAuthenticated, setIsAuthenticated] = useState(false);
+    const [checkingAuth, setCheckingAuth] = useState(true);
+    const [password, setPassword] = useState("");
+    const [authError, setAuthError] = useState("");
     const router = useRouter();
+
+    useEffect(() => {
+        // Check if already authenticated via server-side session
+        checkAuthStatus();
+    }, []);
+
+    const checkAuthStatus = async () => {
+        try {
+            const response = await fetch('/api/admin/auth');
+            const data = await response.json();
+            setIsAuthenticated(data.authenticated);
+        } catch (error) {
+            setIsAuthenticated(false);
+        } finally {
+            setCheckingAuth(false);
+        }
+    };
+
+    const handleLogin = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setAuthError("");
+        setLoading(true);
+
+        try {
+            const response = await fetch('/api/admin/auth', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ password }),
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                setIsAuthenticated(true);
+                setPassword("");
+            } else {
+                setAuthError("Incorrect password");
+                setPassword("");
+            }
+        } catch (error) {
+            setAuthError("Authentication failed. Please try again.");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleLogout = async () => {
+        try {
+            await fetch('/api/admin/auth', { method: 'DELETE' });
+        } catch (error) {
+            // Ignore error
+        }
+        setIsAuthenticated(false);
+        router.push("/");
+    };
 
     const loadStats = async () => {
         setLoading(true);
@@ -38,6 +97,85 @@ export default function AdminPage() {
         }
     };
 
+    // Show loading while checking auth
+    if (checkingAuth) {
+        return (
+            <main className="min-h-screen text-white flex flex-col items-center justify-center p-4">
+                <div className="text-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-500 mx-auto mb-4"></div>
+                    <p className="text-slate-400">Checking authentication...</p>
+                </div>
+            </main>
+        );
+    }
+
+    // Show login form if not authenticated
+    if (!isAuthenticated) {
+        return (
+            <main className="min-h-screen text-white flex flex-col items-center justify-center p-4 md:p-24 relative overflow-hidden">
+                {/* Background decoration */}
+                <div className="absolute top-0 left-0 w-full h-full overflow-hidden -z-10 pointer-events-none">
+                    <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-purple-600/20 rounded-full blur-[100px]"></div>
+                    <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-600/20 rounded-full blur-[100px]"></div>
+                </div>
+
+                <div className="max-w-md w-full">
+                    <h1 className="text-4xl md:text-5xl font-black bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 text-transparent bg-clip-text mb-8 text-center">
+                        Admin Login
+                    </h1>
+
+                    <div className="glass p-8 rounded-2xl">
+                        <form onSubmit={handleLogin} className="space-y-6">
+                            <div>
+                                <label className="block text-sm font-bold mb-2 text-slate-300">
+                                    Admin Password
+                                </label>
+                                <input
+                                    type="password"
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                    className="w-full p-4 rounded-xl bg-slate-800/50 border border-slate-600 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 focus:outline-none transition-all text-lg"
+                                    placeholder="Enter admin password"
+                                    autoFocus
+                                />
+                                {authError && (
+                                    <p className="mt-2 text-sm text-red-400">{authError}</p>
+                                )}
+                            </div>
+
+                            <button
+                                type="submit"
+                                disabled={loading}
+                                className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-4 px-6 rounded-xl transition-all active:scale-[0.98] shadow-lg"
+                            >
+                                {loading ? 'Authenticating...' : 'Login'}
+                            </button>
+                        </form>
+
+                        <div className="mt-6 pt-6 border-t border-slate-700/50">
+                            <button
+                                onClick={() => router.push("/")}
+                                className="w-full bg-slate-700 hover:bg-slate-600 text-white font-bold py-3 px-6 rounded-xl transition-all active:scale-[0.98]"
+                            >
+                                ← Back to Home
+                            </button>
+                        </div>
+                    </div>
+
+                    <div className="mt-6 glass p-4 rounded-xl text-sm text-slate-400">
+                        <p className="font-semibold text-green-400 mb-2">🔒 Secure Authentication</p>
+                        <p className="text-xs">
+                            Admin access is protected with server-side authentication. The password is stored securely and never exposed to the browser.
+                        </p>
+                        <p className="mt-2 text-xs">
+                            To access: Navigate directly to <code className="bg-slate-800/50 px-1 rounded">/admin</code>
+                        </p>
+                    </div>
+                </div>
+            </main>
+        );
+    }
+
     return (
         <main className="min-h-screen text-white flex flex-col items-center justify-center p-4 md:p-24 relative overflow-hidden">
             {/* Background decoration */}
@@ -51,12 +189,20 @@ export default function AdminPage() {
                     <h1 className="text-4xl md:text-5xl font-black bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 text-transparent bg-clip-text">
                         Room Admin
                     </h1>
-                    <button
-                        onClick={() => router.push("/")}
-                        className="bg-slate-700 hover:bg-slate-600 px-4 py-2 rounded-lg transition-colors text-sm"
-                    >
-                        ← Back to Home
-                    </button>
+                    <div className="flex gap-2">
+                        <button
+                            onClick={handleLogout}
+                            className="bg-red-600 hover:bg-red-500 px-4 py-2 rounded-lg transition-colors text-sm font-semibold"
+                        >
+                            Logout
+                        </button>
+                        <button
+                            onClick={() => router.push("/")}
+                            className="bg-slate-700 hover:bg-slate-600 px-4 py-2 rounded-lg transition-colors text-sm"
+                        >
+                            ← Back to Home
+                        </button>
+                    </div>
                 </div>
 
                 <div className="glass p-6 rounded-2xl mb-6">
@@ -129,15 +275,16 @@ export default function AdminPage() {
                 </div>
 
                 <div className="glass p-6 rounded-2xl">
-                    <h2 className="text-xl font-bold mb-2 text-yellow-400">⚠️ Warning</h2>
-                    <p className="text-sm text-slate-400">
-                        This admin panel is not password-protected. In production, you should:
+                    <h2 className="text-xl font-bold mb-2 text-green-400">🔒 Security Notes</h2>
+                    <p className="text-sm text-slate-400 mb-2">
+                        Admin panel uses secure server-side authentication:
                     </p>
                     <ul className="list-disc list-inside text-sm text-slate-400 mt-2 space-y-1">
-                        <li>Add authentication (Firebase Auth, NextAuth, etc.)</li>
-                        <li>Use Firebase Cloud Functions for automated cleanup</li>
-                        <li>Set up Firebase Security Rules to restrict write access</li>
-                        <li>Monitor database usage in Firebase Console</li>
+                        <li>Password stored server-side only (not exposed in browser)</li>
+                        <li>HTTP-only cookies prevent JavaScript access</li>
+                        <li>Session expires after 24 hours</li>
+                        <li>Change password via <code className="bg-slate-800/50 px-1 rounded text-xs">ADMIN_PASSWORD</code> env var (not NEXT_PUBLIC_)</li>
+                        <li>No admin link on homepage (access via /admin URL)</li>
                     </ul>
                 </div>
             </div>

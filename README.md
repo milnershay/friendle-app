@@ -37,11 +37,18 @@ A real-time multiplayer Wordle game where friends can play together and compete 
 - Custom styled scrollbars
 - Dark theme optimized
 
+### 🌍 Full Localization
+- **English and Hebrew** support throughout the entire app
+- Language selector on home page (persists in localStorage)
+- RTL (Right-to-Left) support for Hebrew
+- Easy to add more languages via `src/lib/i18n.ts`
+
 ### 📱 Mobile Optimized
 - Touch-friendly keyboard
 - Tab navigation (Game/Players)
 - Optimized for iPhone and Android
 - Safari-specific fixes
+- **Leave room button** on mobile and desktop
 
 ## Getting Started
 
@@ -150,7 +157,9 @@ See `DEPLOY.md` for detailed deployment instructions.
 
 - `CLAUDE.md` - Developer guide for Claude Code
 - `FIREBASE_SETUP.md` - Firebase configuration guide
-- `DEPLOY.md` - Deployment instructions
+- `DEPLOY.md` - Deployment instructions and checklist
+- `SECURITY.md` - Security guide and best practices
+- `LOCALIZATION.md` - Guide for adding new languages
 - `IMPROVEMENTS.md` - Recent improvements and features
 
 ## Contributing

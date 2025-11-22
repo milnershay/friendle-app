@@ -67,7 +67,7 @@ export default function GameBoard({ currentWord, onGuess, gameState, guesses, la
     const keyboardLayout = KEYBOARD_LAYOUTS[language as keyof typeof KEYBOARD_LAYOUTS] || KEYBOARD_LAYOUTS.en;
 
     return (
-        <div className="flex flex-col items-center gap-2 md:gap-8 w-full max-w-lg mx-auto pb-2 px-1" dir={language === 'he' ? 'rtl' : 'ltr'}>
+        <div data-testid="game-board" className="flex flex-col items-center gap-2 md:gap-8 w-full max-w-lg mx-auto pb-2 px-1" dir={language === 'he' ? 'rtl' : 'ltr'}>
             {/* Grid */}
             <div className="grid gap-1 md:gap-2 w-full max-w-[min(330px,100%)] mx-auto" style={{ gridTemplateRows: `repeat(6, minmax(0, 1fr))` }}>
                 {Array.from({ length: 6 }).map((_, rowIndex) => {
@@ -133,12 +133,12 @@ export default function GameBoard({ currentWord, onGuess, gameState, guesses, la
                                         }
                                     }}
                                     className={cn(
-                                        "py-3.5 md:px-3 md:py-5 rounded font-bold text-base md:text-base transition-all min-w-[1.5rem] md:min-w-[2.5rem] flex-1 active:scale-95 active:opacity-70 touch-manipulation select-none",
+                                        "py-4 md:px-3 md:py-5 rounded-lg font-bold text-sm md:text-base transition-all min-w-[1.5rem] md:min-w-[2.5rem] flex-1 active:scale-95 active:opacity-70 touch-manipulation select-none",
                                         status === 'empty' && "bg-slate-600 active:bg-slate-500 text-white shadow-sm",
                                         status === 'correct' && "bg-green-600 text-white shadow-sm",
                                         status === 'present' && "bg-yellow-600 text-white shadow-sm",
                                         status === 'absent' && "bg-slate-800 text-slate-500",
-                                        key.length > 1 && "flex-[1.6] text-[0.65rem] md:text-sm font-bold uppercase"
+                                        key.length > 1 && "flex-[1.5] text-[0.65rem] md:text-sm font-bold uppercase"
                                     )}
                                     style={{ WebkitTapHighlightColor: 'transparent' }}
                                 >

@@ -1,0 +1,94 @@
+{
+  "rules": {
+    "rooms": {
+      "$roomId": {
+        // Room exists validation
+        ".read": true,
+
+        // Room creation and updates
+        ".write": "!data.exists() || (data.exists() && newData.exists())",
+
+        // Validate room structure
+        ".validate": "newData.hasChildren(['id', 'players', 'gameState', 'settings'])",
+
+        "id": {
+          ".validate": "newData.isString() && newData.val() === $roomId"
+        },
+
+        "currentWord": {
+          ".validate": "newData.isString() || !newData.exists()"
+        },
+
+        "currentSuggester": {
+          ".validate": "newData.isString() || !newData.exists()"
+        },
+
+        "gameState": {
+          ".validate": "newData.isString() && (newData.val() === 'waiting' || newData.val() === 'playing' || newData.val() === 'finished')"
+        },
+
+        "startTime": {
+          ".validate": "newData.isNumber()"
+        },
+
+        "settings": {
+          ".validate": "newData.hasChildren(['wordLength', 'language'])",
+
+          "wordLength": {
+            ".validate": "newData.isNumber() && newData.val() >= 4 && newData.val() <= 6"
+          },
+
+          "language": {
+            ".validate": "newData.isString() && (newData.val() === 'en' || newData.val() === 'he')"
+          },
+
+          "customQueue": {
+            ".validate": "newData.isString() || !newData.exists()"
+          },
+
+          "maxGuesses": {
+            ".validate": "newData.isNumber() && newData.val() >= 4 && newData.val() <= 10"
+          }
+        },
+
+        "wordQueue": {
+          ".validate": "newData.isString() || !newData.exists()"
+        },
+
+        "players": {
+          "$playerId": {
+            ".validate": "newData.hasChildren(['id', 'username', 'score', 'status'])",
+
+            "id": {
+              ".validate": "newData.isString() && newData.val() === $playerId"
+            },
+
+            "username": {
+              ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 30"
+            },
+
+            "score": {
+              ".validate": "newData.isNumber() && newData.val() >= 0"
+            },
+
+            "status": {
+              ".validate": "newData.isString() && (newData.val() === 'waiting' || newData.val() === 'playing' || newData.val() === 'won' || newData.val() === 'lost')"
+            },
+
+            "guesses": {
+              ".validate": "(newData.isString() && newData.val().length <= 500) || !newData.exists()"
+            },
+
+            "timeTaken": {
+              ".validate": "newData.isNumber() || !newData.exists()"
+            },
+
+            "endTime": {
+              ".validate": "newData.isNumber() || !newData.exists()"
+            }
+          }
+        }
+      }
+    }
+  }
+}

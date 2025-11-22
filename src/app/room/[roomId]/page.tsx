@@ -8,14 +8,81 @@ import GameBoard from "@/components/game/GameBoard";
 import { WORD_LISTS } from "@/lib/wordLists";
 import { useTranslation, getStoredLanguage, type Language } from "@/lib/i18n";
 
+interface GameHistory {
+    date: number; // timestamp
+    language: 'en' | 'he';
+    wordLength: number;
+    guessCount: number; // how many guesses it took
+    timeTaken: number; // seconds
+    won: boolean;
+}
+
+interface CategoryStats {
+    games: number;
+    avgGuesses: number;
+    avgTime: number;
+    wins: number;
+}
+
+interface PlayerStats {
+    'en-4'?: CategoryStats;
+    'en-5'?: CategoryStats;
+    'en-6'?: CategoryStats;
+    'he-4'?: CategoryStats;
+    'he-5'?: CategoryStats;
+    'he-6'?: CategoryStats;
+}
+
 interface Player {
     id: string;
     username: string;
     score: number;
     status: 'waiting' | 'playing' | 'won' | 'lost';
-    guesses?: string[];
+    guesses?: string; // Stored as JSON string in Firebase
     timeTaken?: number;
     endTime?: number;
+    history?: string; // Stored as JSON string - GameHistory[]
+    stats?: string; // Stored as JSON string - PlayerStats
+}
+
+// Helper function to parse guesses from Firebase
+const parseGuesses = (guesses?: string): string[] => {
+    if (!guesses) return [];
+    try {
+        return JSON.parse(guesses);
+    } catch {
+        return [];
+    }
+};
+
+// Helper function to parse history
+const parseHistory = (history?: string): GameHistory[] => {
+    if (!history) return [];
+    try {
+        return JSON.parse(history);
+    } catch {
+        return [];
+    }
+};
+
+// Helper function to parse stats
+const parseStats = (stats?: string): PlayerStats => {
+    if (!stats) return {};
+    try {
+        return JSON.parse(stats);
+    } catch {
+        return {};
+    }
+};
+
+// Helper to get category key
+const getCategoryKey = (lang: 'en' | 'he', length: number): keyof PlayerStats => {
+    return `${lang}-${length}` as keyof PlayerStats;
+};
+
+interface RoutineGame {
+    language: 'en' | 'he';
+    wordLength: 4 | 5 | 6;
 }
 
 interface RoomSettings {
@@ -23,6 +90,8 @@ interface RoomSettings {
     customQueue: { word: string; suggester: string }[];
     maxGuesses?: number;
     language: 'en' | 'he';
+    dailyRoutine?: RoutineGame[]; // NEW: Custom game sequence
+    useRoutine?: boolean; // NEW: Whether to use daily routine
 }
 
 interface RoomData {
@@ -34,6 +103,9 @@ interface RoomData {
     startTime: number;
     settings: RoomSettings;
     wordQueue: { word: string; suggester: string }[];
+    routineIndex?: number; // NEW: Current position in daily routine
+    dailyRound?: number; // NEW: Which round today (resets daily)
+    lastResetDate?: string; // NEW: ISO date for tracking daily resets
 }
 
 export default function RoomPage() {
@@ -46,6 +118,9 @@ export default function RoomPage() {
     const [error, setError] = useState("");
     const [newWord, setNewWord] = useState("");
     const [language, setLanguage] = useState<Language>('en');
+    const [showStats, setShowStats] = useState(false);
+    const [routineLang, setRoutineLang] = useState<'en' | 'he'>('en');
+    const [routineLength, setRoutineLength] = useState<4 | 5 | 6>(5);
     const t = useTranslation(language);
 
     useEffect(() => {
@@ -98,7 +173,7 @@ export default function RoomPage() {
                 const initialRoom: RoomData = {
                     id: roomId as string,
                     players: {
-                        [storedId]: { id: storedId, username: username!, score: 0, status: 'waiting', guesses: [] }
+                        [storedId]: { id: storedId, username: username!, score: 0, status: 'waiting', guesses: JSON.stringify([]) }
                     },
                     gameState: 'waiting',
                     currentWord: "",
@@ -112,7 +187,7 @@ export default function RoomPage() {
                 // Check if player exists (reconnection)
                 if (!currentRoom.players || !currentRoom.players[storedId]) {
                     update(ref(db, `rooms/${roomId}/players`), {
-                        [storedId]: { id: storedId, username: username!, score: 0, status: 'waiting', guesses: [] }
+                        [storedId]: { id: storedId, username: username!, score: 0, status: 'waiting', guesses: JSON.stringify([]) }
                     });
                 } else {
                     // Reconnected, maybe update status if we tracked online/offline
@@ -137,14 +212,38 @@ export default function RoomPage() {
         try {
             let wordObj: { word: string; suggester?: string } | undefined;
             let newQueue = [...(room.wordQueue || [])];
+            let gameLang: 'en' | 'he';
+            let gameLength: number;
 
-            if (newQueue.length > 0) {
-                wordObj = newQueue.shift();
-            } else {
-                const lang = room.settings.language || 'en';
-                const len = room.settings.wordLength || 5;
+            // Check if using daily routine
+            if (room.settings.useRoutine && room.settings.dailyRoutine && room.settings.dailyRoutine.length > 0) {
+                const routine = room.settings.dailyRoutine;
+                const currentIndex = room.routineIndex || 0;
+                const nextIndex = (currentIndex + 1) % routine.length;
+                const currentGame = routine[currentIndex];
+
+                gameLang = currentGame.language;
+                gameLength = currentGame.wordLength;
+
+                // Get word for this category
                 // @ts-ignore
-                const words = WORD_LISTS[lang]?.[len] || WORD_LISTS.en[5];
+                const words = WORD_LISTS[gameLang]?.[gameLength] || WORD_LISTS.en[5];
+                const randomWord = words[Math.floor(Math.random() * words.length)];
+                wordObj = { word: randomWord };
+
+                // Update routine index for next game
+                update(ref(db, `rooms/${roomId}`), {
+                    routineIndex: nextIndex
+                });
+            } else if (newQueue.length > 0) {
+                wordObj = newQueue.shift();
+                gameLang = room.settings.language || 'en';
+                gameLength = room.settings.wordLength || 5;
+            } else {
+                gameLang = room.settings.language || 'en';
+                gameLength = room.settings.wordLength || 5;
+                // @ts-ignore
+                const words = WORD_LISTS[gameLang]?.[gameLength] || WORD_LISTS.en[5];
                 const randomWord = words[Math.floor(Math.random() * words.length)];
                 wordObj = { word: randomWord };
             }
@@ -157,7 +256,7 @@ export default function RoomPage() {
                 updatedPlayers[key] = {
                     ...updatedPlayers[key],
                     status: 'playing',
-                    guesses: [],
+                    guesses: JSON.stringify([]),
                 };
                 // Remove endTime and timeTaken properties entirely
                 delete updatedPlayers[key].endTime;
@@ -193,15 +292,20 @@ export default function RoomPage() {
 
         if (guess.length !== room.settings.wordLength) return;
 
-        const newGuesses = [...(player.guesses || []), guess];
+        const currentGuesses = parseGuesses(player.guesses);
+        const newGuesses = [...currentGuesses, guess];
         let newStatus = player.status;
         let newScore = player.score;
 
         const updateData: any = {
-            guesses: newGuesses,
+            guesses: JSON.stringify(newGuesses),
             status: newStatus,
             score: newScore,
         };
+
+        let gameCompleted = false;
+        let won = false;
+        let finalTime = 0;
 
         if (guess === room.currentWord) {
             newStatus = 'won';
@@ -212,9 +316,69 @@ export default function RoomPage() {
             updateData.score = newScore;
             updateData.endTime = endTime;
             updateData.timeTaken = timeTaken;
+            gameCompleted = true;
+            won = true;
+            finalTime = timeTaken;
         } else if (newGuesses.length >= (room.settings.maxGuesses || 6)) {
             newStatus = 'lost';
             updateData.status = 'lost';
+            const endTime = Date.now();
+            const timeTaken = (endTime - room.startTime) / 1000;
+            updateData.endTime = endTime;
+            updateData.timeTaken = timeTaken;
+            gameCompleted = true;
+            won = false;
+            finalTime = timeTaken;
+        }
+
+        // If game completed, update history and stats
+        if (gameCompleted) {
+            const history = parseHistory(player.history);
+            const stats = parseStats(player.stats);
+
+            // Determine game category
+            let gameLang: 'en' | 'he' = room.settings.language || 'en';
+            let gameLength = room.settings.wordLength || 5;
+
+            // If using routine, get current game's settings
+            if (room.settings.useRoutine && room.settings.dailyRoutine && room.settings.dailyRoutine.length > 0) {
+                const routine = room.settings.dailyRoutine;
+                const currentIndex = (room.routineIndex || 1) - 1; // Index was already incremented in startGame
+                const actualIndex = currentIndex < 0 ? routine.length - 1 : currentIndex;
+                const currentGame = routine[actualIndex];
+                gameLang = currentGame.language;
+                gameLength = currentGame.wordLength;
+            }
+
+            // Add to history
+            const gameRecord: GameHistory = {
+                date: Date.now(),
+                language: gameLang,
+                wordLength: gameLength,
+                guessCount: newGuesses.length,
+                timeTaken: finalTime,
+                won
+            };
+            history.push(gameRecord);
+
+            // Update stats for this category
+            const categoryKey = getCategoryKey(gameLang, gameLength);
+            const currentStats = stats[categoryKey] || { games: 0, avgGuesses: 0, avgTime: 0, wins: 0 };
+
+            const newGames = currentStats.games + 1;
+            const newWins = currentStats.wins + (won ? 1 : 0);
+            const newAvgGuesses = ((currentStats.avgGuesses * currentStats.games) + newGuesses.length) / newGames;
+            const newAvgTime = ((currentStats.avgTime * currentStats.games) + finalTime) / newGames;
+
+            stats[categoryKey] = {
+                games: newGames,
+                avgGuesses: newAvgGuesses,
+                avgTime: newAvgTime,
+                wins: newWins
+            };
+
+            updateData.history = JSON.stringify(history);
+            updateData.stats = JSON.stringify(stats);
         }
 
         // Update my player state
@@ -259,6 +423,35 @@ export default function RoomPage() {
         }
     };
 
+    const addToRoutine = () => {
+        if (!room) return;
+        const currentRoutine = room.settings.dailyRoutine || [];
+        const newGame: RoutineGame = { language: routineLang, wordLength: routineLength };
+        updateSettings({ dailyRoutine: [...currentRoutine, newGame] });
+    };
+
+    const removeFromRoutine = (index: number) => {
+        if (!room) return;
+        const currentRoutine = room.settings.dailyRoutine || [];
+        const newRoutine = currentRoutine.filter((_, i) => i !== index);
+        updateSettings({ dailyRoutine: newRoutine });
+    };
+
+    const toggleRoutine = () => {
+        if (!room) return;
+        const newValue = !room.settings.useRoutine;
+        updateSettings({ useRoutine: newValue });
+        if (newValue && (!room.settings.dailyRoutine || room.settings.dailyRoutine.length === 0)) {
+            // Initialize with a default routine
+            updateSettings({
+                dailyRoutine: [
+                    { language: 'en', wordLength: 5 },
+                    { language: 'he', wordLength: 5 }
+                ]
+            });
+        }
+    };
+
     const addCustomWord = () => {
         if (!newWord || !room) return;
         const currentQueue = room.settings.customQueue || [];
@@ -280,7 +473,7 @@ export default function RoomPage() {
             updatedPlayers[key] = {
                 ...updatedPlayers[key],
                 status: 'waiting',
-                guesses: [],
+                guesses: JSON.stringify([]),
             };
             delete updatedPlayers[key].endTime;
             delete updatedPlayers[key].timeTaken;
@@ -354,7 +547,16 @@ export default function RoomPage() {
             {/* Mobile Header / Tabs */}
             <div className="md:hidden glass p-3 flex justify-between items-center sticky top-0 z-10 safe-top border-b border-white/10">
                 <div className="flex items-center gap-2">
-                    <h1 className="text-lg font-black bg-gradient-to-r from-indigo-400 to-purple-400 text-transparent bg-clip-text">Friendle</h1>
+                    <button
+                        onClick={leaveRoom}
+                        className="text-slate-400 hover:text-white transition-colors"
+                        title={t.room.leaveRoom}
+                    >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                        </svg>
+                    </button>
+                    <h1 className="text-lg font-black bg-gradient-to-r from-indigo-400 to-purple-400 text-transparent bg-clip-text">{t.home.title}</h1>
                     <span className="text-xs bg-white/10 px-2 py-0.5 rounded font-mono border border-white/5">{roomId}</span>
                 </div>
                 <div className="flex gap-1 bg-black/20 rounded-lg p-1">
@@ -362,13 +564,13 @@ export default function RoomPage() {
                         onClick={() => setActiveTab('game')}
                         className={`px-4 py-1.5 rounded-md text-sm font-bold transition-all ${activeTab === 'game' ? 'bg-white/10 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'}`}
                     >
-                        Game
+                        {t.room.game}
                     </button>
                     <button
                         onClick={() => setActiveTab('players')}
                         className={`px-4 py-1.5 rounded-md text-sm font-bold transition-all ${activeTab === 'players' ? 'bg-white/10 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'}`}
                     >
-                        Players
+                        {t.room.players}
                     </button>
                 </div>
             </div>
@@ -379,30 +581,41 @@ export default function RoomPage() {
         ${activeTab === 'players' ? 'flex' : 'hidden md:flex'}
       `}>
                 <div className="hidden md:block mb-8">
-                    <h1 className="text-3xl font-black bg-gradient-to-r from-indigo-400 to-purple-400 text-transparent bg-clip-text mb-2">Friendle</h1>
+                    <div className="flex items-center justify-between mb-2">
+                        <h1 className="text-3xl font-black bg-gradient-to-r from-indigo-400 to-purple-400 text-transparent bg-clip-text">{t.home.title}</h1>
+                        <button
+                            onClick={leaveRoom}
+                            className="text-slate-400 hover:text-white transition-colors p-2"
+                            title={t.room.leaveRoom}
+                        >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                            </svg>
+                        </button>
+                    </div>
                     <p className="text-slate-400 text-sm flex items-center gap-2">
-                        Room: <span className="font-mono text-white bg-white/10 px-2 py-1 rounded select-all border border-white/5">{roomId}</span>
+                        {t.room.roomCode}: <span className="font-mono text-white bg-white/10 px-2 py-1 rounded select-all border border-white/5">{roomId}</span>
                     </p>
                 </div>
 
                 {/* Mobile Room Code */}
                 <div className="md:hidden mb-6 p-4 bg-white/5 rounded-xl text-center border border-white/5">
-                    <p className="text-slate-400 text-xs uppercase tracking-widest mb-1">Room Code</p>
+                    <p className="text-slate-400 text-xs uppercase tracking-widest mb-1">{t.room.roomCode}</p>
                     <p className="text-3xl font-mono font-bold select-all tracking-wider">{roomId}</p>
                 </div>
 
                 <div className="flex-1 overflow-y-auto custom-scrollbar">
                     <h2 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-4 flex items-center justify-between">
                         <span className="flex items-center gap-2">
-                            Leaderboard <span className="bg-white/10 px-1.5 py-0.5 rounded-full text-[10px]">{playerList.length}</span>
+                            {t.room.leaderboard} <span className="bg-white/10 px-1.5 py-0.5 rounded-full text-[10px]">{playerList.length}</span>
                         </span>
                         {isHost && playerList.some(p => p.score > 0) && (
                             <button
                                 onClick={clearScores}
                                 className="text-[10px] bg-red-500/20 text-red-400 hover:bg-red-500/30 px-2 py-1 rounded transition-colors"
-                                title="Reset all scores"
+                                title={t.room.reset}
                             >
-                                Reset
+                                {t.room.reset}
                             </button>
                         )}
                     </h2>
@@ -412,9 +625,9 @@ export default function RoomPage() {
                             .map((player, index) => (
                                 <div key={player.id} className={`p-3 rounded-xl flex items-center gap-3 transition-all ${player.id === userId ? 'bg-white/10 border border-white/10 shadow-lg' : 'bg-white/5 border border-transparent hover:bg-white/10'}`}>
                                     <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-black text-sm ${index === 0 ? 'bg-gradient-to-br from-yellow-400 to-yellow-600 text-yellow-900' :
-                                            index === 1 ? 'bg-gradient-to-br from-slate-300 to-slate-500 text-slate-900' :
-                                                index === 2 ? 'bg-gradient-to-br from-amber-600 to-amber-800 text-amber-100' :
-                                                    'bg-black/20 text-slate-500'
+                                        index === 1 ? 'bg-gradient-to-br from-slate-300 to-slate-500 text-slate-900' :
+                                            index === 2 ? 'bg-gradient-to-br from-amber-600 to-amber-800 text-amber-100' :
+                                                'bg-black/20 text-slate-500'
                                         }`}>
                                         {index + 1}
                                     </div>
@@ -425,7 +638,7 @@ export default function RoomPage() {
                                         </div>
                                         <div className="text-xs text-slate-400 mt-0.5">
                                             {player.status === 'waiting' && '⏳ Waiting...'}
-                                            {player.status === 'playing' && <span className="text-yellow-400">⚡ Playing ({player.guesses?.length || 0}/{room.settings.maxGuesses || 6})</span>}
+                                            {player.status === 'playing' && <span className="text-yellow-400">⚡ Playing ({parseGuesses(player.guesses).length}/{room.settings.maxGuesses || 6})</span>}
                                             {player.status === 'won' && <span className="text-green-400 font-bold">✓ Solved ({player.timeTaken?.toFixed(1)}s)</span>}
                                             {player.status === 'lost' && <span className="text-red-400">✗ Failed</span>}
                                         </div>
@@ -434,11 +647,66 @@ export default function RoomPage() {
                                 </div>
                             ))}
                     </div>
+
+                    {/* Stats Section */}
+                    {userId && room.players[userId] && (
+                        <div className="mt-6">
+                            <button
+                                onClick={() => setShowStats(!showStats)}
+                                className="w-full flex items-center justify-between p-3 bg-white/5 hover:bg-white/10 rounded-xl border border-white/10 transition-all mb-3"
+                            >
+                                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">📊 Your Stats</span>
+                                <span className="text-xs text-slate-500">{showStats ? '▼' : '▶'}</span>
+                            </button>
+
+                            {showStats && (
+                                <div className="space-y-3">
+                                    {(Object.keys(parseStats(room.players[userId].stats)) as Array<keyof PlayerStats>).map((categoryKey) => {
+                                        const stats = parseStats(room.players[userId].stats)[categoryKey];
+                                        if (!stats || stats.games === 0) return null;
+
+                                        const [lang, length] = categoryKey.split('-');
+                                        const winRate = ((stats.wins / stats.games) * 100).toFixed(0);
+
+                                        return (
+                                            <div key={categoryKey} className="p-3 bg-white/5 rounded-lg border border-white/10">
+                                                <div className="flex items-center justify-between mb-2">
+                                                    <span className="text-sm font-bold text-indigo-400">
+                                                        {lang.toUpperCase()}-{length}
+                                                    </span>
+                                                    <span className="text-xs text-slate-400">{stats.games} games</span>
+                                                </div>
+                                                <div className="grid grid-cols-3 gap-2 text-xs">
+                                                    <div className="bg-black/20 p-2 rounded text-center">
+                                                        <div className="text-green-400 font-bold">{winRate}%</div>
+                                                        <div className="text-[10px] text-slate-500">Win</div>
+                                                    </div>
+                                                    <div className="bg-black/20 p-2 rounded text-center">
+                                                        <div className="text-yellow-400 font-bold">{stats.avgGuesses.toFixed(1)}</div>
+                                                        <div className="text-[10px] text-slate-500">Avg Guesses</div>
+                                                    </div>
+                                                    <div className="bg-black/20 p-2 rounded text-center">
+                                                        <div className="text-blue-400 font-bold">{stats.avgTime.toFixed(1)}s</div>
+                                                        <div className="text-[10px] text-slate-500">Avg Time</div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                    {Object.keys(parseStats(room.players[userId].stats)).length === 0 && (
+                                        <div className="p-4 bg-white/5 rounded-lg border border-white/10 text-center text-xs text-slate-400">
+                                            Play some games to see your stats!
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    )}
                 </div>
 
                 {isHost && room.gameState === 'waiting' && (
                     <div className="mt-6 p-5 bg-white/5 rounded-xl border border-white/10">
-                        <h3 className="font-bold mb-4 text-xs uppercase text-slate-400 tracking-widest">Game Settings</h3>
+                        <h3 className="font-bold mb-4 text-xs uppercase text-slate-400 tracking-widest">{t.room.gameSettings}</h3>
                         <div className="space-y-4">
                             <div className="flex justify-between items-center">
                                 <label className="text-sm font-medium text-slate-300">Language</label>
@@ -479,6 +747,74 @@ export default function RoomPage() {
                                     <button onClick={addCustomWord} className="bg-indigo-600 hover:bg-indigo-500 px-3 rounded-lg text-white font-bold transition-colors">+</button>
                                 </div>
                             </div>
+
+                            {/* Daily Routine Configuration */}
+                            <div className="pt-4 border-t border-white/10">
+                                <div className="flex items-center justify-between mb-3">
+                                    <label className="text-xs text-slate-400 uppercase tracking-wider">Daily Routine</label>
+                                    <button
+                                        onClick={toggleRoutine}
+                                        className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${room.settings.useRoutine ? 'bg-green-500/20 text-green-400 border border-green-500/30' : 'bg-white/5 text-slate-400 border border-white/10'}`}
+                                    >
+                                        {room.settings.useRoutine ? '✓ Enabled' : 'Disabled'}
+                                    </button>
+                                </div>
+
+                                {room.settings.useRoutine && (
+                                    <>
+                                        <div className="mb-3 p-3 bg-black/20 rounded-lg border border-white/10">
+                                            <div className="text-xs text-slate-400 mb-2">Add to routine:</div>
+                                            <div className="flex gap-2">
+                                                <select
+                                                    value={routineLang}
+                                                    onChange={(e) => setRoutineLang(e.target.value as 'en' | 'he')}
+                                                    className="bg-black/30 text-xs p-2 rounded border border-white/10"
+                                                >
+                                                    <option value="en">EN</option>
+                                                    <option value="he">HE</option>
+                                                </select>
+                                                <select
+                                                    value={routineLength}
+                                                    onChange={(e) => setRoutineLength(Number(e.target.value) as 4 | 5 | 6)}
+                                                    className="bg-black/30 text-xs p-2 rounded border border-white/10"
+                                                >
+                                                    <option value={4}>4</option>
+                                                    <option value={5}>5</option>
+                                                    <option value={6}>6</option>
+                                                </select>
+                                                <button
+                                                    onClick={addToRoutine}
+                                                    className="bg-indigo-600 hover:bg-indigo-500 px-3 rounded text-white font-bold text-xs"
+                                                >
+                                                    Add
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        {room.settings.dailyRoutine && room.settings.dailyRoutine.length > 0 && (
+                                            <div className="space-y-1">
+                                                <div className="text-xs text-slate-400 mb-2">Current routine ({room.settings.dailyRoutine.length} games):</div>
+                                                {room.settings.dailyRoutine.map((game, index) => (
+                                                    <div key={index} className="flex items-center justify-between bg-black/20 p-2 rounded border border-white/10">
+                                                        <span className="text-xs font-medium">
+                                                            {index + 1}. {game.language.toUpperCase()}-{game.wordLength}
+                                                            {index === ((room.routineIndex || 0) % (room.settings.dailyRoutine?.length || 1)) && (
+                                                                <span className="ml-2 text-green-400">← Next</span>
+                                                            )}
+                                                        </span>
+                                                        <button
+                                                            onClick={() => removeFromRoutine(index)}
+                                                            className="text-red-400 hover:text-red-300 text-xs font-bold"
+                                                        >
+                                                            ×
+                                                        </button>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </>
+                                )}
+                            </div>
                         </div>
                     </div>
                 )}
@@ -488,29 +824,29 @@ export default function RoomPage() {
                         onClick={startGame}
                         className="mt-6 w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-400 hover:to-emerald-500 text-white font-bold py-4 px-4 rounded-xl transition-all active:scale-[0.98] shadow-lg shadow-green-900/20 text-lg uppercase tracking-wide"
                     >
-                        {room.gameState === 'finished' ? 'Play Again' : 'Start Game'}
+                        {room.gameState === 'finished' ? t.room.playAgain : t.room.startGame}
                     </button>
                 ) : (
                     <div className="mt-6 space-y-2">
                         <div className="text-center p-4 bg-white/5 rounded-xl border border-white/5">
-                            <div className="animate-pulse text-indigo-400 font-bold mb-1">Game in progress...</div>
-                            <div className="text-xs text-slate-400">Switch to Game tab to play</div>
+                            <div className="animate-pulse text-indigo-400 font-bold mb-1">{t.room.gameInProgress}</div>
+                            <div className="text-xs text-slate-400">{t.room.switchToGame}</div>
                         </div>
                         {isHost && (
                             <div className="flex gap-2">
                                 <button
                                     onClick={skipWord}
                                     className="flex-1 bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-400 font-bold py-2 px-3 rounded-lg transition-all active:scale-[0.98] text-sm border border-yellow-500/20"
-                                    title="End current round"
+                                    title={t.room.skipWord}
                                 >
-                                    Skip Word
+                                    {t.room.skipWord}
                                 </button>
                                 <button
                                     onClick={resetRound}
                                     className="flex-1 bg-red-500/20 hover:bg-red-500/30 text-red-400 font-bold py-2 px-3 rounded-lg transition-all active:scale-[0.98] text-sm border border-red-500/20"
-                                    title="Reset to waiting"
+                                    title={t.room.resetRound}
                                 >
-                                    Reset Round
+                                    {t.room.resetRound}
                                 </button>
                             </div>
                         )}
@@ -524,16 +860,16 @@ export default function RoomPage() {
         ${activeTab === 'game' ? 'flex' : 'hidden md:flex'}
       `}>
                 {room.gameState === 'waiting' ? (
-                    <div className="text-center mt-10 md:mt-0 max-w-md mx-auto">
+                    <div className="text-center mt-4 md:mt-0 max-w-md mx-auto px-4">
                         <div className="w-20 h-20 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-6 animate-bounce">
                             <span className="text-4xl">👋</span>
                         </div>
-                        <h2 className="text-3xl md:text-5xl font-black mb-4 bg-gradient-to-r from-white to-slate-400 text-transparent bg-clip-text">Waiting for players...</h2>
-                        <p className="text-slate-400 text-lg mb-8">Share the room code with your friends to start playing!</p>
+                        <h2 className="text-2xl md:text-5xl font-black mb-4 bg-gradient-to-r from-white to-slate-400 text-transparent bg-clip-text">{t.room.waitingForPlayers}</h2>
+                        <p className="text-slate-400 text-lg mb-8">{t.room.shareRoomCode}</p>
 
                         {room.wordQueue?.length > 0 && (
                             <div className="bg-indigo-500/10 border border-indigo-500/20 rounded-xl p-4 inline-block">
-                                <p className="text-sm text-indigo-300 font-medium">✨ Custom Word Queue Active: <span className="font-bold text-white">{room.wordQueue.length}</span> words ready.</p>
+                                <p className="text-sm text-indigo-300 font-medium">✨ {t.room.customQueueActive}: <span className="font-bold text-white">{room.wordQueue.length}</span> {t.room.wordsReady}</p>
                             </div>
                         )}
                     </div>
@@ -541,8 +877,8 @@ export default function RoomPage() {
                     <div className="w-full max-w-lg flex flex-col items-center">
                         {room.gameState === 'finished' && (
                             <div className="mb-8 text-center glass p-6 rounded-2xl border-white/10 animate-in fade-in zoom-in duration-300">
-                                <h2 className="text-3xl md:text-4xl font-black mb-2 text-white">Game Over! 🎉</h2>
-                                <p className="text-xl text-slate-300 mb-2">The word was</p>
+                                <h2 className="text-3xl md:text-4xl font-black mb-2 text-white">{t.room.gameOver}</h2>
+                                <p className="text-xl text-slate-300 mb-2">{t.room.theWordWas}</p>
                                 <div className="text-4xl md:text-5xl font-black bg-gradient-to-r from-green-400 to-emerald-500 text-transparent bg-clip-text mb-4 tracking-widest">
                                     {room.currentWord}
                                 </div>
@@ -550,7 +886,7 @@ export default function RoomPage() {
                                 {room.currentSuggester && (
                                     /* @ts-ignore */
                                     <div className="inline-block bg-white/10 px-3 py-1 rounded-full text-sm text-slate-300 border border-white/5">
-                                        💡 Suggested by <span className="text-indigo-300 font-bold">{room.currentSuggester}</span>
+                                        {t.room.suggestedBy} <span className="text-indigo-300 font-bold">{room.currentSuggester}</span>
                                     </div>
                                 )}
                             </div>
@@ -560,7 +896,7 @@ export default function RoomPage() {
                             currentWord={room.currentWord}
                             onGuess={handleGuess}
                             gameState={myPlayer?.status === 'playing' ? 'playing' : (myPlayer?.status === 'won' ? 'won' : (myPlayer?.status === 'lost' ? 'lost' : 'finished'))}
-                            guesses={myPlayer?.guesses || []}
+                            guesses={parseGuesses(myPlayer?.guesses)}
                             language={room.settings.language || 'en'}
                             wordLength={room.currentWord ? room.currentWord.length : (room.settings.wordLength || 5)}
                         />
