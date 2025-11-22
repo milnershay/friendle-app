@@ -11,9 +11,13 @@ test('game flow', async ({ page }) => {
 
     // Wait for the page to be fully loaded and hydrated
     await page.waitForLoadState('domcontentloaded');
+    await page.waitForLoadState('networkidle');
 
-    // Wait for username input to be visible and enabled
-    const usernameInput = page.getByPlaceholder('Enter your name');
+    // Wait for the main heading to ensure React has hydrated
+    await page.getByRole('heading', { name: 'Friendle' }).waitFor({ state: 'visible', timeout: 15000 });
+
+    // Find username input by label (more reliable than placeholder which might change)
+    const usernameInput = page.getByLabel('Username', { exact: false });
     await usernameInput.waitFor({ state: 'visible', timeout: 10000 });
 
     // Fill username
