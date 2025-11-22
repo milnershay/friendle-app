@@ -689,31 +689,31 @@ export default function RoomPage() {
                             </button>
                         )}
                     </h2>
-                    <div className="space-y-2">
+                    <div className="space-y-2.5">
                         {playerList
                             .sort((a, b) => b.score - a.score)
                             .map((player, index) => (
-                                <div key={player.id} className={`p-4 rounded-xl flex items-center gap-3 transition-all backdrop-blur-sm ${player.id === userId ? 'bg-white/10 border border-white/20 shadow-lg' : 'bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20'}`}>
-                                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black text-base shadow-lg ${index === 0 ? 'bg-gradient-to-br from-yellow-400 to-yellow-600 text-yellow-900' :
-                                        index === 1 ? 'bg-gradient-to-br from-slate-300 to-slate-500 text-slate-900' :
-                                            index === 2 ? 'bg-gradient-to-br from-amber-600 to-amber-800 text-amber-100' :
-                                                'bg-black/30 text-slate-400 border border-white/10'
+                                <div key={player.id} className={`p-3.5 rounded-lg flex items-center gap-3 transition-all ${player.id === userId ? 'bg-indigo-600/15 border-2 border-indigo-500/50' : 'bg-slate-800/60 border border-slate-700 hover:border-slate-600'}`}>
+                                    <div className={`w-9 h-9 rounded-lg flex items-center justify-center font-bold text-sm ${index === 0 ? 'bg-yellow-500 text-yellow-950' :
+                                        index === 1 ? 'bg-slate-400 text-slate-950' :
+                                            index === 2 ? 'bg-amber-700 text-amber-50' :
+                                                'bg-slate-700 text-slate-300'
                                         }`}>
                                         {index + 1}
                                     </div>
-                                    <div className="flex-1">
-                                        <div className="font-bold text-base flex items-center gap-2">
-                                            {player.username}
-                                            {player.id === userId && <span className="text-xs bg-indigo-500/30 text-indigo-200 px-2 py-0.5 rounded-md uppercase tracking-wider border border-indigo-500/30">You</span>}
+                                    <div className="flex-1 min-w-0">
+                                        <div className="font-semibold text-sm flex items-center gap-2 text-white">
+                                            <span className="truncate">{player.username}</span>
+                                            {player.id === userId && <span className="text-xs bg-indigo-500/20 text-indigo-300 px-1.5 py-0.5 rounded font-medium">You</span>}
                                         </div>
-                                        <div className="text-sm text-slate-300 mt-0.5 font-medium">
-                                            {player.status === 'waiting' && '⏳ Waiting...'}
-                                            {player.status === 'playing' && <span className="text-yellow-400">⚡ Playing ({parseGuesses(player.guesses).length}/{room.settings.maxGuesses || 6})</span>}
-                                            {player.status === 'won' && <span className="text-green-400 font-bold">✓ Solved ({player.timeTaken?.toFixed(1)}s)</span>}
-                                            {player.status === 'lost' && <span className="text-red-400">✗ Failed</span>}
+                                        <div className="text-xs text-slate-400 mt-0.5">
+                                            {player.status === 'waiting' && 'Waiting...'}
+                                            {player.status === 'playing' && <span className="text-yellow-400">Playing • {parseGuesses(player.guesses).length}/{room.settings.maxGuesses || 6}</span>}
+                                            {player.status === 'won' && <span className="text-green-400">Solved • {player.timeTaken?.toFixed(1)}s</span>}
+                                            {player.status === 'lost' && <span className="text-red-400">Failed</span>}
                                         </div>
                                     </div>
-                                    <div className="text-2xl font-black text-white bg-gradient-to-br from-indigo-500/30 to-purple-500/30 w-14 h-14 rounded-xl flex items-center justify-center border border-white/20 shadow-lg">{player.score}</div>
+                                    <div className="text-xl font-bold text-white bg-slate-700/50 w-12 h-12 rounded-lg flex items-center justify-center border border-slate-600">{player.score}</div>
                                 </div>
                             ))}
                     </div>
@@ -723,14 +723,14 @@ export default function RoomPage() {
                         <div className="mt-6">
                             <button
                                 onClick={() => setShowStats(!showStats)}
-                                className="w-full flex items-center justify-between p-4 bg-white/5 hover:bg-white/10 rounded-xl border border-white/20 transition-all mb-3 backdrop-blur-sm shadow-lg"
+                                className="w-full flex items-center justify-between p-3 bg-slate-800/60 hover:bg-slate-800/80 rounded-lg border border-slate-700 transition-all"
                             >
-                                <span className="text-sm font-bold text-slate-300 uppercase tracking-wider">📊 Your Stats</span>
-                                <span className="text-sm text-slate-400">{showStats ? '▼' : '▶'}</span>
+                                <span className="text-sm font-semibold text-slate-200">📊 Your Stats</span>
+                                <span className="text-xs text-slate-400">{showStats ? '▼' : '▶'}</span>
                             </button>
 
                             {showStats && (
-                                <div className="space-y-3">
+                                <div className="space-y-2.5 mt-3">
                                     {(Object.keys(parseStats(room.players[userId].stats)) as Array<keyof PlayerStats>).map((categoryKey) => {
                                         const stats = parseStats(room.players[userId].stats)[categoryKey];
                                         if (!stats || stats.games === 0) return null;
@@ -739,7 +739,7 @@ export default function RoomPage() {
                                         const winRate = ((stats.wins / stats.games) * 100).toFixed(0);
 
                                         return (
-                                            <div key={categoryKey} className="p-4 bg-white/5 rounded-xl border border-white/20 backdrop-blur-sm shadow-lg">
+                                            <div key={categoryKey} className="p-3.5 bg-slate-800/60 rounded-lg border border-slate-700">
                                                 <div className="flex items-center justify-between mb-2">
                                                     <span className="text-sm font-bold text-indigo-400">
                                                         {lang.toUpperCase()}-{length}
@@ -775,8 +775,8 @@ export default function RoomPage() {
                 </div>
 
                 {isHost && room.gameState === 'waiting' && (
-                    <div className="mt-6 p-5 bg-white/5 rounded-xl border border-white/10">
-                        <h3 className="font-bold mb-4 text-xs uppercase text-slate-400 tracking-widest">{t.room.gameSettings}</h3>
+                    <div className="mt-6 p-4 bg-slate-800/60 rounded-lg border border-slate-700">
+                        <h3 className="font-semibold mb-3 text-sm text-slate-200">{t.room.gameSettings}</h3>
                         <div className="space-y-4">
                             <div className="flex justify-between items-center">
                                 <label className="text-sm font-bold text-slate-300">Language</label>
@@ -974,19 +974,19 @@ export default function RoomPage() {
 
             {/* Results Modal */}
             {showResultsModal && room && (
-                <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-300">
-                    <div className="glass max-w-2xl w-full rounded-2xl p-6 md:p-8 border border-white/20 animate-in zoom-in duration-300">
+                <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4">
+                    <div className="bg-slate-900 max-w-lg w-full rounded-xl p-6 border border-slate-700 shadow-2xl">
                         <div className="text-center mb-6">
-                            <h2 className="text-3xl md:text-4xl font-black mb-2 text-white">
+                            <h2 className="text-2xl md:text-3xl font-bold mb-2 text-white">
                                 {t.room.gameOver}
                             </h2>
                             {room.settings.useRoutine && (
-                                <p className="text-sm text-slate-400 mb-2">
+                                <p className="text-xs text-slate-400 mb-3">
                                     Round {room.dailyRound || 1} • Game {((room.routineIndex || 1) % (room.settings.dailyRoutine?.length || 1)) + 1} of {room.settings.dailyRoutine?.length || 1}
                                 </p>
                             )}
-                            <p className="text-xl text-slate-300 mb-2">{t.room.theWordWas}</p>
-                            <div className="text-4xl md:text-5xl font-black bg-gradient-to-r from-green-400 to-emerald-500 text-transparent bg-clip-text mb-4 tracking-widest">
+                            <p className="text-sm text-slate-400 mb-2">{t.room.theWordWas}</p>
+                            <div className="text-3xl md:text-4xl font-bold text-green-400 mb-4 tracking-wide">
                                 {room.currentWord}
                             </div>
                         </div>
@@ -1011,22 +1011,22 @@ export default function RoomPage() {
                                     return (
                                         <div
                                             key={player.id}
-                                            className={`flex items-center justify-between p-4 rounded-xl border transition-all ${
+                                            className={`flex items-center justify-between p-3 rounded-lg border ${
                                                 isWinner
-                                                    ? 'bg-green-500/10 border-green-500/30'
-                                                    : 'bg-white/5 border-white/10'
+                                                    ? 'bg-green-500/10 border-green-500/40'
+                                                    : 'bg-slate-800/60 border-slate-700'
                                             }`}
                                         >
-                                            <div className="flex items-center gap-3">
-                                                <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${
+                                            <div className="flex items-center gap-2.5">
+                                                <div className={`w-7 h-7 rounded-lg flex items-center justify-center font-semibold text-xs ${
                                                     isWinner
                                                         ? 'bg-green-500/20 text-green-400'
-                                                        : 'bg-white/10 text-slate-400'
+                                                        : 'bg-slate-700 text-slate-400'
                                                 }`}>
                                                     {index + 1}
                                                 </div>
                                                 <div>
-                                                    <div className="font-bold text-white">{player.username}</div>
+                                                    <div className="font-semibold text-sm text-white">{player.username}</div>
                                                     <div className="text-xs text-slate-400">
                                                         {isWinner
                                                             ? `${guessCount} ${guessCount === 1 ? 'guess' : 'guesses'}`
@@ -1037,12 +1037,12 @@ export default function RoomPage() {
                                             </div>
                                             <div className="text-right">
                                                 {isWinner && player.timeTaken && (
-                                                    <div className="text-sm font-mono text-slate-300">
+                                                    <div className="text-sm font-semibold text-slate-200">
                                                         {player.timeTaken.toFixed(1)}s
                                                     </div>
                                                 )}
                                                 {isWinner && (
-                                                    <div className="text-xs text-green-400">✓ Won</div>
+                                                    <div className="text-xs text-green-400">Won</div>
                                                 )}
                                             </div>
                                         </div>
@@ -1052,8 +1052,8 @@ export default function RoomPage() {
 
                         {room.settings.useRoutine ? (
                             <div className="text-center">
-                                <p className="text-sm text-slate-400 mb-3">
-                                    Next game starting in a few seconds...
+                                <p className="text-xs text-slate-400 mb-3">
+                                    Next game starts soon...
                                 </p>
                                 <div className="flex gap-2 justify-center">
                                     <button
@@ -1061,13 +1061,13 @@ export default function RoomPage() {
                                             setShowResultsModal(false);
                                             setTimeout(() => startGame(), 300);
                                         }}
-                                        className="bg-green-500/20 hover:bg-green-500/30 text-green-400 font-bold py-2 px-6 rounded-lg transition-all border border-green-500/20"
+                                        className="bg-green-600 hover:bg-green-500 text-white font-semibold py-2.5 px-6 rounded-lg transition-all"
                                     >
                                         Start Now
                                     </button>
                                     <button
                                         onClick={() => setShowResultsModal(false)}
-                                        className="bg-white/10 hover:bg-white/20 text-white font-bold py-2 px-6 rounded-lg transition-all border border-white/10"
+                                        className="bg-slate-700 hover:bg-slate-600 text-white font-semibold py-2.5 px-6 rounded-lg transition-all"
                                     >
                                         Close
                                     </button>
@@ -1077,7 +1077,7 @@ export default function RoomPage() {
                             <div className="text-center">
                                 <button
                                     onClick={() => setShowResultsModal(false)}
-                                    className="bg-white/10 hover:bg-white/20 text-white font-bold py-3 px-8 rounded-lg transition-all border border-white/10"
+                                    className="bg-slate-700 hover:bg-slate-600 text-white font-semibold py-3 px-8 rounded-lg transition-all"
                                 >
                                     Close
                                 </button>
