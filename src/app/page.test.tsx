@@ -34,13 +34,14 @@ describe('Home Page', () => {
         render(<Home />);
 
         expect(screen.getByText(/Friendle/i)).toBeDefined();
-        expect(screen.getByPlaceholderText('Enter your name')).toBeDefined(); // Fixed placeholder
-        expect(screen.getByText('Create New Room')).toBeDefined(); // Fixed button text
+        expect(screen.getByPlaceholderText('Enter name')).toBeDefined();
+        expect(screen.getByText('Create Room')).toBeDefined();
+        expect(screen.getByText('Join')).toBeDefined();
     });
 
     it('allows entering username', () => {
         render(<Home />);
-        const input = screen.getByPlaceholderText('Enter your name');
+        const input = screen.getByPlaceholderText('Enter name');
         fireEvent.change(input, { target: { value: 'TestUser' } });
         expect((input as HTMLInputElement).value).toBe('TestUser');
     });
@@ -48,10 +49,10 @@ describe('Home Page', () => {
     it('creates a room with valid username', async () => {
         render(<Home />);
 
-        const usernameInput = screen.getByPlaceholderText('Enter your name');
+        const usernameInput = screen.getByPlaceholderText('Enter name');
         fireEvent.change(usernameInput, { target: { value: 'TestUser' } });
 
-        const createButton = screen.getByText('Create New Room');
+        const createButton = screen.getByText('Create Room');
         fireEvent.click(createButton);
 
         await waitFor(() => {
@@ -63,7 +64,7 @@ describe('Home Page', () => {
         const alertMock = vi.spyOn(window, 'alert').mockImplementation(() => {});
         render(<Home />);
 
-        const createButton = screen.getByText('Create New Room');
+        const createButton = screen.getByText('Create Room');
         fireEvent.click(createButton); // Empty username
 
         expect(alertMock).toHaveBeenCalled();
@@ -72,10 +73,10 @@ describe('Home Page', () => {
     it('joins a room with valid username and room code', async () => {
         render(<Home />);
 
-        const usernameInput = screen.getByPlaceholderText('Enter your name');
+        const usernameInput = screen.getByPlaceholderText('Enter name');
         fireEvent.change(usernameInput, { target: { value: 'TestUser' } });
 
-        const roomInput = screen.getByPlaceholderText('CODE'); // Fixed placeholder
+        const roomInput = screen.getByPlaceholderText('CODE');
         fireEvent.change(roomInput, { target: { value: 'ABCDEF' } });
 
         const joinButton = screen.getByText('Join');
@@ -90,7 +91,7 @@ describe('Home Page', () => {
         const alertMock = vi.spyOn(window, 'alert').mockImplementation(() => {});
         render(<Home />);
 
-        const usernameInput = screen.getByPlaceholderText('Enter your name');
+        const usernameInput = screen.getByPlaceholderText('Enter name');
         fireEvent.change(usernameInput, { target: { value: 'TestUser' } });
 
         const roomInput = screen.getByPlaceholderText('CODE');
@@ -102,13 +103,13 @@ describe('Home Page', () => {
         expect(alertMock).toHaveBeenCalled();
     });
 
-    it('changes language', () => {
+    it('changes language to Hebrew', () => {
         render(<Home />);
 
-        const select = screen.getByRole('combobox');
-        fireEvent.change(select, { target: { value: 'he' } });
+        const heButton = screen.getByText('HE');
+        fireEvent.click(heButton);
 
-        // Check if text changed to Hebrew
-        expect(screen.getByText('צור חדר חדש')).toBeDefined(); // Updated to match "Create New Room" in Hebrew from i18n.ts
+        expect(screen.getByText('צור חדר')).toBeDefined();
+        expect(screen.getByPlaceholderText('הזן שם')).toBeDefined();
     });
 });
