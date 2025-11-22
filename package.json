@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "release": "node scripts/release.js",
     "build": "next build",
     "build:export": "next build",
     "start": "next start",
