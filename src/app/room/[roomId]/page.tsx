@@ -212,7 +212,7 @@ export default function RoomPage() {
 
         try {
             let wordObj: { word: string; suggester?: string } | undefined;
-            let newQueue = [...(room.wordQueue || [])];
+            const newQueue = [...(room.wordQueue || [])];
             let gameLang: 'en' | 'he';
             let gameLength: number;
 
@@ -227,7 +227,7 @@ export default function RoomPage() {
                 gameLength = currentGame.wordLength;
 
                 // Get word for this category
-                // @ts-ignore
+                // @ts-expect-error - Dynamic access to WORD_LISTS might fail type check but is safe here
                 const words = WORD_LISTS[gameLang]?.[gameLength] || WORD_LISTS.en[5];
                 const randomWord = words[Math.floor(Math.random() * words.length)];
                 wordObj = { word: randomWord };
@@ -243,7 +243,7 @@ export default function RoomPage() {
             } else {
                 gameLang = room.settings.language || 'en';
                 gameLength = room.settings.wordLength || 5;
-                // @ts-ignore
+                // @ts-expect-error - Dynamic access to WORD_LISTS might fail type check but is safe here
                 const words = WORD_LISTS[gameLang]?.[gameLength] || WORD_LISTS.en[5];
                 const randomWord = words[Math.floor(Math.random() * words.length)];
                 wordObj = { word: randomWord };
@@ -266,6 +266,7 @@ export default function RoomPage() {
 
             console.log("Starting game with word:", word);
 
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const updatePayload: any = {
                 currentWord: word?.toUpperCase(),
                 currentSuggester: wordObj?.suggester || null,
@@ -304,6 +305,7 @@ export default function RoomPage() {
         let newStatus = player.status;
         let newScore = player.score;
 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const updateData: any = {
             guesses: JSON.stringify(newGuesses),
             status: newStatus,
@@ -417,6 +419,7 @@ export default function RoomPage() {
         if (allFinished) {
             // Only one person needs to update this. Let's say the Host (first key sorted?).
             // Or just anyone. If multiple update, it's fine, idempotent.
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const updatePayload: any = {
                 gameState: 'finished'
             };
@@ -432,8 +435,12 @@ export default function RoomPage() {
 
     // Effect to show results modal and auto-advance
     useEffect(() => {
-        if (!room || room.gameState !== 'finished') {
+        // Only reset if we are NOT finished.
+        if (room && room.gameState !== 'finished') {
             setShowResultsModal(false);
+        }
+
+        if (!room || room.gameState !== 'finished') {
             return;
         }
 
@@ -452,6 +459,7 @@ export default function RoomPage() {
 
             return () => clearTimeout(timer);
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [room?.gameState, room?.settings.useRoutine]);
 
 
@@ -930,9 +938,7 @@ export default function RoomPage() {
                                 <div className="text-4xl md:text-5xl font-black bg-gradient-to-r from-green-400 to-emerald-500 text-transparent bg-clip-text mb-4 tracking-widest">
                                     {room.currentWord}
                                 </div>
-                                {/* @ts-ignore */}
                                 {room.currentSuggester && (
-                                    /* @ts-ignore */
                                     <div className="inline-block bg-white/10 px-3 py-1 rounded-full text-sm text-slate-300 border border-white/5">
                                         {t.room.suggestedBy} <span className="text-indigo-300 font-bold">{room.currentSuggester}</span>
                                     </div>

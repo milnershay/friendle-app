@@ -1,3 +1,4 @@
+/* eslint-disable */
 const { WORD_LISTS } = require('./src/lib/wordLists.ts');
 const hebrewRegex = /^[\u0590-\u05FF]+$/;
 ['he'].forEach(lang => {
