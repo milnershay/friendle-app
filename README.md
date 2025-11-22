@@ -1,36 +1,166 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Friendle - Multiplayer Wordle Game
+
+A real-time multiplayer Wordle game where friends can play together and compete on a leaderboard!
+
+## Features
+
+### 🎮 Multiplayer Gameplay
+- Create or join rooms with unique 6-character codes
+- Real-time synchronization using Firebase Realtime Database
+- Play simultaneously with friends
+- See everyone's progress live
+
+### 🏆 Leaderboard & Scoring
+- Ranked leaderboard sorted by score
+- Gold 🥇, Silver 🥈, Bronze 🥉 medals for top 3 players
+- Track solve times and success rates
+- Persistent scores across multiple rounds
+
+### 🎯 Game Modes
+- **English & Hebrew** word support
+- **Variable word lengths**: 4, 5, or 6 letters
+- **Custom word queue**: Add your own words with attribution
+- Maximum 6 guesses per word
+
+### 👑 Host Controls
+- **Start Game**: Begin a new round
+- **Skip Word**: End current round immediately
+- **Reset Round**: Clear game and return to waiting
+- **Clear Scores**: Reset all player scores
+- **Game Settings**: Configure language and word length
+
+### 🎨 Beautiful UI
+- Glassmorphism design with backdrop blur
+- Gradient backgrounds and text
+- Responsive mobile & desktop layouts
+- Smooth animations and transitions
+- Custom styled scrollbars
+- Dark theme optimized
+
+### 📱 Mobile Optimized
+- Touch-friendly keyboard
+- Tab navigation (Game/Players)
+- Optimized for iPhone and Android
+- Safari-specific fixes
 
 ## Getting Started
 
-First, run the development server:
-
+### Development
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+```
+Open [http://localhost:3000](http://localhost:3000)
+
+### Building
+```bash
+npm run build
+npm start
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### Linting
+```bash
+npm run lint
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Firebase Setup
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+1. Create a Firebase project at [console.firebase.google.com](https://console.firebase.google.com/)
+2. Enable Realtime Database
+3. Create `.env.local` with your Firebase credentials:
 
-## Learn More
+```env
+NEXT_PUBLIC_FIREBASE_API_KEY=your_api_key
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your_domain
+NEXT_PUBLIC_FIREBASE_DATABASE_URL=your_database_url
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=your_project_id
+NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your_bucket
+NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
+NEXT_PUBLIC_FIREBASE_APP_ID=your_app_id
+```
 
-To learn more about Next.js, take a look at the following resources:
+See `FIREBASE_SETUP.md` for detailed instructions.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Admin Panel
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Access `/admin` to:
+- View room statistics (total, active, old rooms)
+- Clean up old/inactive rooms
+- Monitor player counts
 
-## Deploy on Vercel
+⚠️ **Production**: Add authentication before deploying!
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Room Cleanup
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Automatically clean up old rooms to save database space:
+
+```typescript
+import { cleanupOldRooms } from '@/lib/roomCleanup';
+
+// Clean up rooms older than 24 hours
+await cleanupOldRooms(24);
+```
+
+Consider setting up a Cloud Function to run this periodically.
+
+## Tech Stack
+
+- **Next.js 16** - React framework with App Router
+- **React 19** - UI library
+- **TypeScript** - Type safety
+- **Firebase** - Realtime Database for multiplayer sync
+- **Tailwind CSS 4** - Styling with custom design system
+- **Lucide React** - Icons
+
+## Project Structure
+
+```
+src/
+├── app/
+│   ├── page.tsx              # Home page (create/join room)
+│   ├── room/[roomId]/        # Game room page
+│   └── admin/                # Admin panel
+├── components/
+│   └── game/
+│       └── GameBoard.tsx     # Wordle game board & keyboard
+├── lib/
+│   ├── firebase.ts           # Firebase initialization
+│   ├── gameLogic.ts          # Wordle logic & keyboard layouts
+│   ├── wordLists.ts          # Word lists by language/length
+│   └── roomCleanup.ts        # Room cleanup utilities
+```
+
+## Deployment
+
+### Firebase Hosting
+```bash
+npm run build
+firebase deploy --only hosting
+```
+
+### Docker
+```bash
+docker build -t friendle .
+docker run -p 3000:3000 friendle
+```
+
+See `DEPLOY.md` for detailed deployment instructions.
+
+## Documentation
+
+- `CLAUDE.md` - Developer guide for Claude Code
+- `FIREBASE_SETUP.md` - Firebase configuration guide
+- `DEPLOY.md` - Deployment instructions
+- `IMPROVEMENTS.md` - Recent improvements and features
+
+## Contributing
+
+Feel free to submit issues and pull requests!
+
+## License
+
+MIT
+
+---
+
+Built with ❤️ using Next.js and Firebase
