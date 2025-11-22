@@ -30,7 +30,7 @@ npm run lint
 The app requires Firebase environment variables in `.env.local`:
 - Firebase configuration is in `src/lib/firebase.ts`
 - Missing `firebaseConfig` variable must be defined in firebase.ts before the app initialization
-- See `FIREBASE_SETUP.md` for database setup instructions
+- See `docs/firebase-setup.md` for database setup instructions
 - Database rules are open (test mode) - needs proper security for production
 
 ## Architecture
@@ -132,7 +132,7 @@ The app requires Firebase environment variables in `.env.local`:
 ## Deployment
 
 **Firebase Hosting (Primary):**
-See `DEPLOY.md` for complete instructions. Key steps:
+See `docs/deployment.md` for complete instructions. Key steps:
 ```bash
 npm run build
 firebase deploy --only hosting
@@ -169,7 +169,7 @@ Dockerfile provided for platforms like Render or Railway.
 - All UI text stored in `src/lib/i18n.ts`
 - Language preference persists in localStorage
 - RTL support for Hebrew (and other RTL languages)
-- Easy to add new languages - see `LOCALIZATION.md`
+- Easy to add new languages - see `docs/localization.md`
 
 **Currently supported:**
 - English (`en`)

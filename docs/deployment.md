@@ -82,24 +82,43 @@ GitHub Actions provides:
 
 **Setup:**
 
-See [GITHUB_ACTIONS.md](./GITHUB_ACTIONS.md) for complete setup instructions.
+See [github-actions.md](./github-actions.md) for complete setup instructions.
 
-**Quick summary:**
-1. Configure GitHub Secrets (Firebase env vars + Vercel credentials)
-2. Push to `main` branch
-3. GitHub Actions automatically runs tests and deploys to Vercel
+#### Avoiding Double Deployments
 
-**Status:** ✅ Workflows configured in `.github/workflows/`
+This project uses **GitHub Actions** for deployments to maintain CI/CD control. To prevent double deployments (one from Vercel's git integration and one from GitHub Actions):
 
----
+1. Go to your Vercel project settings.
+2. Under "Git" settings, disable automatic deployments:
+   - **Production Branch**: Leave empty or disable
+   - **Preview Branches**: Disable if you want GitHub Actions to handle all deploys
+
+The `.github/workflows/deploy-vercel.yml` workflow will handle all production deployments when you push to `main`.
+
+#### Release Process
+
+To create a new release with version bump:
+
+```bash
+# Bump version (patch: 0.1.0 → 0.1.1)
+npm run release patch
+
+# Bump version (minor: 0.1.0 → 0.2.0)
+npm run release minor
+
+# Bump version (major: 0.1.0 → 1.0.0)
+npm run release major
+```
+
+This will:
+1. Bump version in `package.json` and `package-lock.json`
+2. Update `CHANGELOG.md` with new version and date
+3. Create a git commit and tag
+4. Push the tag to trigger deployment with the new version
 
 ### Option 2: Firebase Hosting
 
-Firebase Hosting provides:
-- Global CDN
-- Automatic SSL
-- Easy rollback
-- Preview channels
+Firebase Hosting provides global CDN, automatic SSL, and easy rollback.
 
 **Initial Setup:**
 ```bash
@@ -123,9 +142,6 @@ firebase deploy
 
 # Or deploy only hosting
 firebase deploy --only hosting
-
-# Or deploy only database rules
-firebase deploy --only database
 ```
 
 **Preview Before Deploy:**
@@ -162,29 +178,9 @@ docker build -t friendle .
 ```bash
 docker run -p 3000:3000 \
   -e NEXT_PUBLIC_FIREBASE_API_KEY=your_key \
-  -e NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your_domain \
   # ... other env vars
   friendle
 ```
-
-**Deploy to Cloud:**
-- Push to Docker Hub or GitHub Container Registry
-- Deploy to Cloud Run, ECS, or Kubernetes
-
-### Option 5: Static Export + Any CDN
-
-**Build Static Export:**
-```bash
-npm run build:export
-```
-
-This creates an `out/` directory with static files.
-
-**Deploy to:**
-- Netlify: Drag and drop `out/` folder
-- Cloudflare Pages: Connect git repo
-- AWS S3 + CloudFront
-- Any static hosting provider
 
 ## Post-Deployment
 
@@ -197,7 +193,17 @@ This creates an `out/` directory with static files.
 - [ ] Check admin panel works
 - [ ] Test language switching
 
-### 2. Monitor Firebase Usage
+### 2. Custom Domain Setup (Vercel)
+
+To add a custom domain (e.g., friendle.com):
+
+1. Go to Vercel Dashboard
+2. Project Settings → Domains
+3. Add your domain
+4. Update your DNS records as shown
+5. Vercel will automatically provision SSL
+
+### 3. Monitor Firebase Usage
 
 **Set up budget alerts:**
 1. Firebase Console → Usage and billing
@@ -210,58 +216,6 @@ This creates an `out/` directory with static files.
 - ~10-20 reads per player per second during active game
 - ~5-10 writes per player per game
 - Minimal storage (rooms are small JSON objects)
-
-### 3. Set Up Room Cleanup
-
-**Option A: Cloud Function (Recommended)**
-
-Create a scheduled Firebase Cloud Function:
-
-```typescript
-import * as functions from 'firebase-functions';
-import { cleanupOldRooms } from './roomCleanup';
-
-export const scheduledCleanup = functions.pubsub
-  .schedule('every 24 hours')
-  .onRun(async (context) => {
-    await cleanupOldRooms(24); // Clean rooms older than 24 hours
-    return null;
-  });
-```
-
-**Option B: Manual Cleanup**
-
-Run periodically via admin panel or cron job:
-```bash
-# Visit /admin and click cleanup buttons
-```
-
-### 4. Add Admin Authentication
-
-⚠️ **CRITICAL**: The admin panel (`/admin`) has no authentication!
-
-**Before production, add authentication:**
-
-```typescript
-// src/app/admin/page.tsx
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-
-export default function AdminPage() {
-  const router = useRouter();
-
-  useEffect(() => {
-    const password = prompt('Enter admin password:');
-    if (password !== process.env.NEXT_PUBLIC_ADMIN_PASSWORD) {
-      router.push('/');
-    }
-  }, []);
-
-  // ... rest of component
-}
-```
-
-Or use Firebase Authentication with admin role.
 
 ## Rollback
 
@@ -308,17 +262,6 @@ npm run build
 - Check Safari console for iOS issues
 - Verify viewport meta tag in `layout.tsx`
 
-### Performance Issues
-
-**Monitor Firebase:**
-- Firebase Console → Realtime Database → Usage
-- Look for excessive reads/writes
-
-**Optimize:**
-- Implement client-side caching
-- Reduce polling frequency
-- Add database indexes if needed
-
 ## Scaling Considerations
 
 ### Current Architecture
@@ -334,8 +277,7 @@ npm run build
 2. **Firebase App Check** to prevent abuse
 3. **Database sharding** by region
 4. **Analytics** (Firebase Analytics, Mixpanel)
-5. **Error tracking** (Sentry, LogRocket)
-6. **Rate limiting** per IP/user
+5. **Rate limiting** per IP/user
 
 ## Cost Estimates
 
@@ -349,53 +291,3 @@ npm run build
 
 **Medium Scale (1000 daily users):**
 - ~$20-50/month (depending on usage patterns)
-
-**Optimization Tips:**
-- Clean up old rooms regularly
-- Use `.indexOn` for queries
-- Implement client-side caching
-- Compress data where possible
-
-## Security Best Practices
-
-1. **Never commit `.env` files** to git
-2. **Use environment variables** for all sensitive data
-3. **Deploy security rules** before going live
-4. **Add rate limiting** to prevent abuse
-5. **Monitor database** for unusual activity
-6. **Protect admin routes** with authentication
-7. **Use Firebase App Check** for production
-8. **Keep dependencies updated** regularly
-
-## Support
-
-For issues:
-1. Check Firebase Console for errors
-2. Check browser console for client errors
-3. Review this deployment guide
-4. Check `FIREBASE_SETUP.md` for config issues
-
-## Quick Reference
-
-```bash
-# Development
-npm run dev
-
-# Build for production
-npm run build
-
-# Build static export
-npm run build:export
-
-# Test production build
-npm start
-
-# Deploy to Firebase
-firebase deploy
-
-# Deploy with preview
-firebase hosting:channel:deploy preview
-
-# Check environment
-npm run check:env
-```

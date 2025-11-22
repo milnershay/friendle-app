@@ -66,9 +66,7 @@ Friendle is a real-time multiplayer Wordle game where friends can play together 
    NEXT_PUBLIC_FIREBASE_APP_ID=your_app_id
 
    # Optional: Admin Password for /admin panel
-   ADMIN_PASSWORD=your_secure_password
-   # Optional: Secret for cron job cleanup
-   CRON_SECRET=your_cron_secret
+   NEXT_PUBLIC_ADMIN_PASSWORD=your_secure_password
    ```
 
 4. **Run the development server:**
@@ -76,6 +74,18 @@ Friendle is a real-time multiplayer Wordle game where friends can play together 
    npm run dev
    ```
    Open [http://localhost:3000](http://localhost:3000) with your browser.
+
+## Documentation
+
+Detailed documentation is available in the `docs/` directory:
+
+- **[Deployment Guide](docs/deployment.md)**: Instructions for deploying to production (Vercel, Firebase, Docker).
+- **[Administration](docs/administration.md)**: Admin panel usage and room cleanup procedures.
+- **[Firebase Setup](docs/firebase-setup.md)**: Detailed instructions for setting up Firebase.
+- **[Security](docs/security.md)**: Security best practices and considerations.
+- **[Localization](docs/localization.md)**: Guide for adding new languages.
+- **[GitHub Actions](docs/github-actions.md)**: CI/CD pipeline information.
+- **[Developer Guide (CLAUDE.md)](CLAUDE.md)**: Architectural overview and development context.
 
 ## Project Structure
 
@@ -97,37 +107,6 @@ src/
 │   ├── roomCleanup.ts    # Room management utilities
 │   ├── validation.ts     # Input validation
 │   └── wordLists.ts      # Word dictionaries
-```
-
-## Documentation
-
-- **[CLAUDE.md](CLAUDE.md)**: Developer guide and architectural overview.
-- **[FIREBASE_SETUP.md](FIREBASE_SETUP.md)**: Detailed instructions for setting up Firebase.
-- **[DEPLOY.md](DEPLOY.md)**: Guide for deploying to production.
-- **[SECURITY.md](SECURITY.md)**: Security best practices and considerations.
-- **[LOCALIZATION.md](LOCALIZATION.md)**: Guide for adding new languages.
-
-## Admin Panel
-
-The application includes an admin panel at `/admin` to monitor room statistics and perform cleanup tasks.
-- **Access**: Navigate to `/admin` in your browser.
-- **Authentication**: Protected by a server-side password (set `ADMIN_PASSWORD` env var).
-- **Features**:
-  - View total, active, and old rooms.
-  - Manually trigger cleanup of old rooms.
-
-## Deployment
-
-### Firebase Hosting
-```bash
-npm run build
-firebase deploy --only hosting
-```
-
-### Docker
-```bash
-docker build -t friendle .
-docker run -p 3000:3000 friendle
 ```
 
 ## Contributing

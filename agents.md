@@ -43,12 +43,14 @@ Use these exact commands. Do not assume standard aliases exist unless listed her
 - **Files:** `src/lib/i18n.ts`
 - **Supported:** English ('en'), Hebrew ('he').
 - **RTL:** The app supports RTL layouts for Hebrew. Ensure UI changes are RTL-compatible.
+- **Documentation:** See `docs/localization.md` for adding new languages.
 
 ## Directory Structure
 - `src/app`: Next.js App Router pages.
 - `src/app/api`: Next.js API routes (admin/cleanup only).
 - `src/lib`: Core logic (Firebase, Game Rules, Validation).
 - `src/components/game`: Game-specific UI (Board, Keyboard).
+- `docs/`: Project documentation (Deployment, Setup, Security, etc.).
 
 ## Critical Rules for Agents
 1. **Firebase Config:** Do not attempt to initialize Firebase without checking `src/lib/firebase.ts`.
