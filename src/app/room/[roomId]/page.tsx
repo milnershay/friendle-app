@@ -367,8 +367,10 @@ export default function RoomPage() {
             // If using routine, get current game's settings
             if (room.settings.useRoutine && room.settings.dailyRoutine && room.settings.dailyRoutine.length > 0) {
                 const routine = room.settings.dailyRoutine;
-                const currentIndex = (room.routineIndex || 1) - 1; // Index was already incremented in startGame
-                const actualIndex = currentIndex < 0 ? routine.length - 1 : currentIndex;
+                // routineIndex points to the NEXT game. We want the current one (previous index).
+                // Use ?? to handle undefined/null but respect 0.
+                const nextGameIndex = room.routineIndex ?? 1;
+                const actualIndex = (nextGameIndex - 1 + routine.length) % routine.length;
                 const currentGame = routine[actualIndex];
                 gameLang = currentGame.language;
                 gameLength = currentGame.wordLength;
@@ -950,9 +952,7 @@ export default function RoomPage() {
                                 <div className="text-4xl md:text-5xl font-black bg-gradient-to-r from-green-400 to-emerald-500 text-transparent bg-clip-text mb-4 tracking-widest">
                                     {room.currentWord}
                                 </div>
-                                {/* @ts-expect-error room.currentSuggester might be undefined in type definition but present in data */}
                                 {room.currentSuggester && (
-                                    /* @ts-expect-error room.currentSuggester might be undefined in type definition but present in data */
                                     <div className="inline-block bg-white/10 px-3 py-1 rounded-full text-sm text-slate-300 border border-white/5">
                                         {t.room.suggestedBy} <span className="text-indigo-300 font-bold">{room.currentSuggester}</span>
                                     </div>
