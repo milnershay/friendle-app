@@ -1,12 +1,6 @@
 import { ref, get, remove } from "firebase/database";
 import { db } from "./firebase";
 
-interface RoomData {
-    startTime?: number;
-    players?: Record<string, { score: number }>;
-    [key: string]: unknown;
-}
-
 /**
  * Clean up old/inactive rooms from Firebase
  * Removes rooms that haven't been updated in the specified time period
@@ -21,7 +15,7 @@ export async function cleanupOldRooms(maxAgeHours: number = 24) {
             return { deleted: 0, total: 0 };
         }
 
-        const rooms = snapshot.val() as Record<string, RoomData>;
+        const rooms = snapshot.val();
         const now = Date.now();
         const maxAge = maxAgeHours * 60 * 60 * 1000; // Convert hours to milliseconds
 
@@ -30,7 +24,8 @@ export async function cleanupOldRooms(maxAgeHours: number = 24) {
 
         for (const [roomId, roomData] of Object.entries(rooms)) {
             totalRooms++;
-            const room = roomData;
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const room = roomData as any;
 
             // Check last activity time
             const lastActivity = room.startTime || 0;
@@ -41,7 +36,8 @@ export async function cleanupOldRooms(maxAgeHours: number = 24) {
             // 2. Room has no players OR all players are in waiting state with no scores
             const hasNoActivity = age > maxAge;
             const isEmpty = !room.players || Object.keys(room.players).length === 0;
-            const hasNoScores = room.players && Object.values(room.players).every((p) => p.score === 0);
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const hasNoScores = room.players && Object.values(room.players).every((p: any) => p.score === 0);
 
             if (hasNoActivity && (isEmpty || hasNoScores)) {
                 console.log(`Deleting old room: ${roomId} (age: ${(age / 1000 / 60 / 60).toFixed(1)} hours)`);
@@ -89,7 +85,7 @@ export async function getRoomStats() {
             };
         }
 
-        const rooms = snapshot.val() as Record<string, RoomData>;
+        const rooms = snapshot.val();
         const now = Date.now();
         const maxAge = 24 * 60 * 60 * 1000; // 24 hours
 
@@ -98,9 +94,11 @@ export async function getRoomStats() {
         let oldRooms = 0;
         let totalPlayers = 0;
 
-        for (const roomData of Object.values(rooms)) {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        for (const [roomId, roomData] of Object.entries(rooms)) {
             totalRooms++;
-            const room = roomData;
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const room = roomData as any;
 
             const lastActivity = room.startTime || 0;
             const age = now - lastActivity;

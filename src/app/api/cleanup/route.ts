@@ -31,6 +31,7 @@ export async function GET(request: NextRequest) {
     let deletedCount = 0;
     const deletions: Promise<void>[] = [];
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     for (const [roomId, room] of Object.entries(rooms) as [string, any][]) {
       const roomAge = now - (room.createdAt || now);
       const playerCount = Object.keys(room.players || {}).length;
