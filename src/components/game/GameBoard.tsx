@@ -127,10 +127,10 @@ export default function GameBoard({ currentWord, onGuess, gameState, guesses, la
             </div>
 
             {/* Keyboard */}
-            <div className="w-full max-w-[min(500px,100%)] flex flex-col gap-1 md:gap-2 touch-manipulation mt-2" dir="ltr">
+            <div className="w-full max-w-[min(500px,100%)] flex flex-col gap-1.5 md:gap-2 touch-manipulation mt-2" dir="ltr">
                 {/* Always LTR for keyboard layout consistency, keys themselves can be Hebrew */}
                 {keyboardLayout.map((row, i) => (
-                    <div key={i} className="flex justify-center gap-1">
+                    <div key={i} className="flex justify-center gap-1.5 md:gap-1">
                         {row.map((key) => {
                             const status = letterStatuses[key] || 'empty';
                             return (
@@ -152,10 +152,10 @@ export default function GameBoard({ currentWord, onGuess, gameState, guesses, la
                                         }
                                     }}
                                     className={cn(
-                                        "py-4 md:px-3 md:py-5 rounded-lg font-bold text-sm md:text-base transition-all min-w-[1.5rem] md:min-w-[2.5rem] flex-1 active:scale-95 active:opacity-70 touch-manipulation select-none",
-                                        status === 'empty' && "bg-slate-600 active:bg-slate-500 text-white shadow-sm",
-                                        status === 'correct' && "bg-green-600 text-white shadow-sm",
-                                        status === 'present' && "bg-yellow-600 text-white shadow-sm",
+                                        "py-4 px-1 md:px-3 md:py-5 rounded-lg font-bold text-sm md:text-base transition-all min-w-[2.75rem] md:min-w-[2.5rem] flex-1 active:scale-95 active:opacity-70 touch-manipulation select-none shadow-md",
+                                        status === 'empty' && "bg-slate-600 active:bg-slate-500 text-white",
+                                        status === 'correct' && "bg-green-600 text-white",
+                                        status === 'present' && "bg-yellow-600 text-white",
                                         status === 'absent' && "bg-slate-800 text-slate-500",
                                         key.length > 1 && "flex-[1.5] text-[0.65rem] md:text-sm font-bold uppercase"
                                     )}

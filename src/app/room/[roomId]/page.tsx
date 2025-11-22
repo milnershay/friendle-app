@@ -693,27 +693,27 @@ export default function RoomPage() {
                         {playerList
                             .sort((a, b) => b.score - a.score)
                             .map((player, index) => (
-                                <div key={player.id} className={`p-3 rounded-xl flex items-center gap-3 transition-all ${player.id === userId ? 'bg-white/10 border border-white/10 shadow-lg' : 'bg-white/5 border border-transparent hover:bg-white/10'}`}>
-                                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-black text-sm ${index === 0 ? 'bg-gradient-to-br from-yellow-400 to-yellow-600 text-yellow-900' :
+                                <div key={player.id} className={`p-4 rounded-xl flex items-center gap-3 transition-all backdrop-blur-sm ${player.id === userId ? 'bg-white/10 border border-white/20 shadow-lg' : 'bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20'}`}>
+                                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black text-base shadow-lg ${index === 0 ? 'bg-gradient-to-br from-yellow-400 to-yellow-600 text-yellow-900' :
                                         index === 1 ? 'bg-gradient-to-br from-slate-300 to-slate-500 text-slate-900' :
                                             index === 2 ? 'bg-gradient-to-br from-amber-600 to-amber-800 text-amber-100' :
-                                                'bg-black/20 text-slate-500'
+                                                'bg-black/30 text-slate-400 border border-white/10'
                                         }`}>
                                         {index + 1}
                                     </div>
                                     <div className="flex-1">
-                                        <div className="font-bold text-sm flex items-center gap-2">
+                                        <div className="font-bold text-base flex items-center gap-2">
                                             {player.username}
-                                            {player.id === userId && <span className="text-[10px] bg-indigo-500/20 text-indigo-300 px-1.5 py-0.5 rounded uppercase tracking-wider">You</span>}
+                                            {player.id === userId && <span className="text-xs bg-indigo-500/30 text-indigo-200 px-2 py-0.5 rounded-md uppercase tracking-wider border border-indigo-500/30">You</span>}
                                         </div>
-                                        <div className="text-xs text-slate-400 mt-0.5">
+                                        <div className="text-sm text-slate-300 mt-0.5 font-medium">
                                             {player.status === 'waiting' && '⏳ Waiting...'}
                                             {player.status === 'playing' && <span className="text-yellow-400">⚡ Playing ({parseGuesses(player.guesses).length}/{room.settings.maxGuesses || 6})</span>}
                                             {player.status === 'won' && <span className="text-green-400 font-bold">✓ Solved ({player.timeTaken?.toFixed(1)}s)</span>}
                                             {player.status === 'lost' && <span className="text-red-400">✗ Failed</span>}
                                         </div>
                                     </div>
-                                    <div className="text-2xl font-black text-slate-300 bg-gradient-to-br from-indigo-500/20 to-purple-500/20 w-12 h-12 rounded-xl flex items-center justify-center border border-white/10">{player.score}</div>
+                                    <div className="text-2xl font-black text-white bg-gradient-to-br from-indigo-500/30 to-purple-500/30 w-14 h-14 rounded-xl flex items-center justify-center border border-white/20 shadow-lg">{player.score}</div>
                                 </div>
                             ))}
                     </div>
@@ -723,10 +723,10 @@ export default function RoomPage() {
                         <div className="mt-6">
                             <button
                                 onClick={() => setShowStats(!showStats)}
-                                className="w-full flex items-center justify-between p-3 bg-white/5 hover:bg-white/10 rounded-xl border border-white/10 transition-all mb-3"
+                                className="w-full flex items-center justify-between p-4 bg-white/5 hover:bg-white/10 rounded-xl border border-white/20 transition-all mb-3 backdrop-blur-sm shadow-lg"
                             >
-                                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">📊 Your Stats</span>
-                                <span className="text-xs text-slate-500">{showStats ? '▼' : '▶'}</span>
+                                <span className="text-sm font-bold text-slate-300 uppercase tracking-wider">📊 Your Stats</span>
+                                <span className="text-sm text-slate-400">{showStats ? '▼' : '▶'}</span>
                             </button>
 
                             {showStats && (
@@ -739,7 +739,7 @@ export default function RoomPage() {
                                         const winRate = ((stats.wins / stats.games) * 100).toFixed(0);
 
                                         return (
-                                            <div key={categoryKey} className="p-3 bg-white/5 rounded-lg border border-white/10">
+                                            <div key={categoryKey} className="p-4 bg-white/5 rounded-xl border border-white/20 backdrop-blur-sm shadow-lg">
                                                 <div className="flex items-center justify-between mb-2">
                                                     <span className="text-sm font-bold text-indigo-400">
                                                         {lang.toUpperCase()}-{length}
@@ -779,19 +779,19 @@ export default function RoomPage() {
                         <h3 className="font-bold mb-4 text-xs uppercase text-slate-400 tracking-widest">{t.room.gameSettings}</h3>
                         <div className="space-y-4">
                             <div className="flex justify-between items-center">
-                                <label className="text-sm font-medium text-slate-300">Language</label>
+                                <label className="text-sm font-bold text-slate-300">Language</label>
                                 <select
                                     value={room.settings.language || 'en'}
                                     onChange={(e) => updateSettings({ language: e.target.value as 'en' | 'he' })}
-                                    className="bg-black/20 text-sm p-2 rounded-lg border border-white/10 focus:border-indigo-500 focus:outline-none transition-colors"
+                                    className="bg-slate-800/50 text-sm p-3 rounded-xl border border-slate-600 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 focus:outline-none transition-all"
                                 >
                                     <option value="en">English</option>
                                     <option value="he">Hebrew</option>
                                 </select>
                             </div>
                             <div className="flex justify-between items-center">
-                                <label className="text-sm font-medium text-slate-300">Word Length</label>
-                                <div className="flex bg-black/20 rounded-lg p-1 border border-white/10">
+                                <label className="text-sm font-bold text-slate-300">Word Length</label>
+                                <div className="flex bg-slate-800/50 rounded-xl p-1.5 border border-slate-600">
                                     {[4, 5, 6].map(len => (
                                         <button
                                             key={len}
@@ -804,17 +804,17 @@ export default function RoomPage() {
                                 </div>
                             </div>
                             <div>
-                                <label className="text-xs block mb-2 text-slate-400 uppercase tracking-wider">Custom Queue ({room.wordQueue?.length || 0})</label>
+                                <label className="text-sm block mb-2 text-slate-300 font-bold">Custom Queue ({room.wordQueue?.length || 0})</label>
                                 <div className="flex gap-2">
                                     <input
                                         type="text"
                                         value={newWord}
                                         onChange={(e) => setNewWord(e.target.value)}
-                                        className="bg-black/20 text-sm p-2 rounded-lg border border-white/10 flex-1 min-w-0 focus:border-indigo-500 focus:outline-none transition-colors"
+                                        className="bg-slate-800/50 text-sm p-3 rounded-xl border border-slate-600 flex-1 min-w-0 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 focus:outline-none transition-all placeholder:text-slate-500"
                                         placeholder="Add word..."
                                         dir={room.settings.language === 'he' ? 'rtl' : 'ltr'}
                                     />
-                                    <button onClick={addCustomWord} className="bg-indigo-600 hover:bg-indigo-500 px-3 rounded-lg text-white font-bold transition-colors">+</button>
+                                    <button onClick={addCustomWord} className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 px-4 rounded-xl text-white font-bold transition-all shadow-lg hover:shadow-indigo-500/25 active:scale-[0.98]">+</button>
                                 </div>
                             </div>
 
@@ -832,13 +832,13 @@ export default function RoomPage() {
 
                                 {room.settings.useRoutine && (
                                     <>
-                                        <div className="mb-3 p-3 bg-black/20 rounded-lg border border-white/10">
-                                            <div className="text-xs text-slate-400 mb-2">Add to routine:</div>
+                                        <div className="mb-3 p-4 bg-slate-800/50 rounded-xl border border-slate-600">
+                                            <div className="text-sm text-slate-300 mb-3 font-bold">Add to routine:</div>
                                             <div className="flex gap-2">
                                                 <select
                                                     value={routineLang}
                                                     onChange={(e) => setRoutineLang(e.target.value as 'en' | 'he')}
-                                                    className="bg-black/30 text-xs p-2 rounded border border-white/10"
+                                                    className="bg-slate-800/50 text-sm p-3 rounded-xl border border-slate-600 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 focus:outline-none transition-all"
                                                 >
                                                     <option value="en">EN</option>
                                                     <option value="he">HE</option>
@@ -846,7 +846,7 @@ export default function RoomPage() {
                                                 <select
                                                     value={routineLength}
                                                     onChange={(e) => setRoutineLength(Number(e.target.value) as 4 | 5 | 6)}
-                                                    className="bg-black/30 text-xs p-2 rounded border border-white/10"
+                                                    className="bg-slate-800/50 text-sm p-3 rounded-xl border border-slate-600 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 focus:outline-none transition-all"
                                                 >
                                                     <option value={4}>4</option>
                                                     <option value={5}>5</option>
@@ -854,7 +854,7 @@ export default function RoomPage() {
                                                 </select>
                                                 <button
                                                     onClick={addToRoutine}
-                                                    className="bg-indigo-600 hover:bg-indigo-500 px-3 rounded text-white font-bold text-xs"
+                                                    className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 px-4 rounded-xl text-white font-bold text-sm transition-all shadow-lg hover:shadow-indigo-500/25 active:scale-[0.98]"
                                                 >
                                                     Add
                                                 </button>
@@ -862,10 +862,10 @@ export default function RoomPage() {
                                         </div>
 
                                         {room.settings.dailyRoutine && room.settings.dailyRoutine.length > 0 && (
-                                            <div className="space-y-1">
-                                                <div className="text-xs text-slate-400 mb-2">Current routine ({room.settings.dailyRoutine.length} games):</div>
+                                            <div className="space-y-2">
+                                                <div className="text-sm text-slate-300 mb-2 font-bold">Current routine ({room.settings.dailyRoutine.length} games):</div>
                                                 {room.settings.dailyRoutine.map((game, index) => (
-                                                    <div key={index} className="flex items-center justify-between bg-black/20 p-2 rounded border border-white/10">
+                                                    <div key={index} className="flex items-center justify-between bg-slate-800/50 p-3 rounded-xl border border-slate-600">
                                                         <span className="text-xs font-medium">
                                                             {index + 1}. {game.language.toUpperCase()}-{game.wordLength}
                                                             {index === ((room.routineIndex || 0) % (room.settings.dailyRoutine?.length || 1)) && (

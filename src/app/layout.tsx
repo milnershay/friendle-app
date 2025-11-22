@@ -17,12 +17,14 @@ export const metadata: Metadata = {
 /**
  * Viewport configuration for the application.
  * Ensures the app is responsive and scalable.
+ * viewport-fit=cover enables safe-area support for iOS notch/Dynamic Island.
  */
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 5,
   userScalable: true,
+  viewportFit: "cover",
 };
 
 /**

@@ -7,16 +7,30 @@ test('game flow', async ({ page }) => {
         await dialog.accept();
     });
 
-    await page.goto('/');
+    await page.goto('/', { waitUntil: 'networkidle' });
+
+    // Wait for the page to be fully loaded and hydrated
+    await page.waitForLoadState('domcontentloaded');
+
+    // Wait for username input to be visible and enabled
+    const usernameInput = page.getByPlaceholder('Enter your name');
+    await usernameInput.waitFor({ state: 'visible', timeout: 10000 });
 
     // Fill username
-    await page.getByPlaceholder('Enter your name').fill('TestUser');
+    await usernameInput.fill('TestUser');
 
     // Click Create Room
-    await page.getByRole('button', { name: 'Create New Room' }).click();
+    const createButton = page.getByRole('button', { name: 'Create New Room' });
+    await createButton.waitFor({ state: 'visible' });
+    await createButton.click();
+
+    // Wait for navigation to room page
+    await page.waitForURL(/\/room\/[A-Z0-9]+/, { timeout: 10000 });
 
     // Wait for Start Game button and click it
-    await page.getByRole('button', { name: 'Start Game' }).click();
+    const startButton = page.getByRole('button', { name: 'Start Game' });
+    await startButton.waitFor({ state: 'visible', timeout: 10000 });
+    await startButton.click();
 
     // Wait for game board
     await expect(page.getByTestId('game-board')).toBeVisible({ timeout: 30000 });
