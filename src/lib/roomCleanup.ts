@@ -2,12 +2,8 @@ import { ref, get, remove } from "firebase/database";
 import { db } from "./firebase";
 
 /**
- * Clean up old/inactive rooms from Firebase.
+ * Clean up old/inactive rooms from Firebase
  * Removes rooms that haven't been updated in the specified time period
- * and have no players or no scores.
- *
- * @param maxAgeHours - The maximum age in hours for a room to be considered inactive. Defaults to 24.
- * @returns An object containing the count of deleted rooms and the total number of rooms processed.
  */
 export async function cleanupOldRooms(maxAgeHours: number = 24) {
     try {
@@ -59,10 +55,7 @@ export async function cleanupOldRooms(maxAgeHours: number = 24) {
 }
 
 /**
- * Clean up a specific room by ID.
- *
- * @param roomId - The ID of the room to delete.
- * @returns A boolean indicating success (true) or failure (false).
+ * Clean up a specific room by ID
  */
 export async function deleteRoom(roomId: string) {
     try {
@@ -76,9 +69,7 @@ export async function deleteRoom(roomId: string) {
 }
 
 /**
- * Get room statistics including total rooms, active rooms, old rooms, and total players.
- *
- * @returns An object containing room statistics.
+ * Get room statistics
  */
 export async function getRoomStats() {
     try {
@@ -103,7 +94,8 @@ export async function getRoomStats() {
         let oldRooms = 0;
         let totalPlayers = 0;
 
-        for (const [, roomData] of Object.entries(rooms)) {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        for (const [roomId, roomData] of Object.entries(rooms)) {
             totalRooms++;
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const room = roomData as any;

@@ -5,13 +5,6 @@ import { useRouter } from "next/navigation";
 import { useTranslation, getStoredLanguage, setStoredLanguage, type Language } from "@/lib/i18n";
 import { validateUsername, validateRoomCode, sanitizeText, checkRateLimit, getRateLimitKey } from "@/lib/validation";
 
-/**
- * The Home page component.
- * Allows users to create a new room or join an existing one.
- * Handles username validation and rate limiting.
- *
- * @returns The rendered Home page.
- */
 export default function Home() {
     const [username, setUsername] = useState("");
     const [roomId, setRoomId] = useState("");
@@ -20,12 +13,8 @@ export default function Home() {
     const t = useTranslation(language);
 
     useEffect(() => {
-        // Sync with local storage on mount.
-        const stored = getStoredLanguage();
-        if (stored) {
-            // eslint-disable-next-line react-hooks/set-state-in-effect
-            setLanguage(stored);
-        }
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setLanguage(getStoredLanguage());
     }, []);
 
     const handleLanguageChange = (newLang: Language) => {
