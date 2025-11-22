@@ -12,12 +12,13 @@ export default function Home() {
   const router = useRouter()
   const [username, setUsername] = useState("")
   const [roomCode, setRoomCode] = useState("")
-  const [activeRoom, setActiveRoom] = useState<string | null>(null)
+  const [activeRoom] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
   const [language, setLanguage] = useState<Language>('en')
   const t = useTranslation(language)
 
   useEffect(() => {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setLanguage(getStoredLanguage());
   }, []);
 
