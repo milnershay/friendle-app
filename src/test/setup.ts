@@ -1,4 +1,4 @@
-import { vi } from 'vitest';
+import { vi, beforeEach } from 'vitest';
 
 // Mock localStorage with actual storage behavior
 const storage: Record<string, string> = {};
@@ -16,6 +16,7 @@ const localStorageMock = {
   }),
 };
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 global.localStorage = localStorageMock as any;
 
 // Reset storage before each test
