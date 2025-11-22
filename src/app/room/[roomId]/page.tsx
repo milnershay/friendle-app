@@ -265,14 +265,20 @@ export default function RoomPage() {
 
             console.log("Starting game with word:", word);
 
-            update(ref(db, `rooms/${roomId}`), {
+            const updatePayload: any = {
                 currentWord: word?.toUpperCase(),
                 currentSuggester: wordObj?.suggester || null,
                 gameState: 'playing',
                 startTime: Date.now(),
                 wordQueue: newQueue,
                 players: updatedPlayers
-            }).then(() => {
+            };
+
+            // Update settings to match the current game (important for routines)
+            updatePayload['settings/wordLength'] = gameLength;
+            updatePayload['settings/language'] = gameLang;
+
+            update(ref(db, `rooms/${roomId}`), updatePayload).then(() => {
                 console.log("Game started successfully");
             }).catch((error) => {
                 console.error("Failed to start game:", error);
