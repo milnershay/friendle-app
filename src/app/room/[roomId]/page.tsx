@@ -229,7 +229,6 @@ export default function RoomPage() {
 
                 // Get word for this category
                 // @ts-expect-error - Dynamic access to word lists
-                // @ts-expect-error - Dynamic access to word lists
                 const words = WORD_LISTS[gameLang]?.[gameLength] || WORD_LISTS.en[5];
                 const randomWord = words[Math.floor(Math.random() * words.length)];
                 wordObj = { word: randomWord };
@@ -937,9 +936,7 @@ export default function RoomPage() {
                                 <div className="text-4xl md:text-5xl font-black bg-gradient-to-r from-green-400 to-emerald-500 text-transparent bg-clip-text mb-4 tracking-widest">
                                     {room.currentWord}
                                 </div>
-                                {/* @ts-expect-error - Suggester might be undefined in type but exists in DB */}
                                 {room.currentSuggester && (
-                                    /* @ts-expect-error - Suggester might be undefined in type but exists in DB */
                                     <div className="inline-block bg-white/10 px-3 py-1 rounded-full text-sm text-slate-300 border border-white/5">
                                         {t.room.suggestedBy} <span className="text-indigo-300 font-bold">{room.currentSuggester}</span>
                                     </div>
