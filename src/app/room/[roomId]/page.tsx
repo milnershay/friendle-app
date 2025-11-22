@@ -350,8 +350,10 @@ export default function RoomPage() {
             // If using routine, get current game's settings
             if (room.settings.useRoutine && room.settings.dailyRoutine && room.settings.dailyRoutine.length > 0) {
                 const routine = room.settings.dailyRoutine;
-                const currentIndex = (room.routineIndex || 1) - 1; // Index was already incremented in startGame
-                const actualIndex = currentIndex < 0 ? routine.length - 1 : currentIndex;
+                // routineIndex points to the NEXT game. We want the current one (previous index).
+                // Use ?? to handle undefined/null but respect 0.
+                const nextGameIndex = room.routineIndex ?? 1;
+                const actualIndex = (nextGameIndex - 1 + routine.length) % routine.length;
                 const currentGame = routine[actualIndex];
                 gameLang = currentGame.language;
                 gameLength = currentGame.wordLength;
