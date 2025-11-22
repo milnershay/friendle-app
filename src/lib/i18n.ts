@@ -1,5 +1,12 @@
+/**
+ * Supported languages in the application.
+ */
 export type Language = 'en' | 'he';
 
+/**
+ * Dictionary of translations for all supported languages.
+ * Organized by language code ('en', 'he') and then by section.
+ */
 export const translations = {
     en: {
         // Home page
@@ -163,16 +170,32 @@ export const translations = {
     }
 };
 
+/**
+ * Hook to retrieve translations for a specific language.
+ *
+ * @param language - The language code ('en' or 'he'). Defaults to 'en'.
+ * @returns The translation object for the specified language.
+ */
 export function useTranslation(language: Language = 'en') {
     return translations[language];
 }
 
+/**
+ * Retrieves the preferred language stored in localStorage.
+ *
+ * @returns The stored language code ('en' or 'he'). Defaults to 'en' if not found or running server-side.
+ */
 export function getStoredLanguage(): Language {
     if (typeof window === 'undefined') return 'en';
     const stored = localStorage.getItem('friendle_language');
     return (stored === 'he' ? 'he' : 'en') as Language;
 }
 
+/**
+ * Stores the user's preferred language in localStorage.
+ *
+ * @param language - The language code to store ('en' or 'he').
+ */
 export function setStoredLanguage(language: Language) {
     if (typeof window === 'undefined') return;
     localStorage.setItem('friendle_language', language);

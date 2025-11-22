@@ -5,22 +5,41 @@ import { checkGuess, LetterStatus, KEYBOARD_LAYOUTS } from "@/lib/gameLogic";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 
+/**
+ * Utility function to merge Tailwind CSS classes.
+ *
+ * @param inputs - The classes to merge.
+ * @returns The merged class string.
+ */
 function cn(...inputs: ClassValue[]) {
     return twMerge(clsx(inputs));
 }
 
+/**
+ * Props for the GameBoard component.
+ */
 interface GameBoardProps {
-    currentWord: string | null; // Only known if game over or debugging? Actually client shouldn't know it until end. 
-    // Wait, for client-side validation (MVP), we need the word. 
-    // Ideally server validates, but for speed we'll do client side or server side.
-    // My server implementation sends `currentWord` in `game_started`.
+    /** The target word for the current game. Used for client-side validation. */
+    currentWord: string | null;
+    /** Callback function to handle a player's guess. */
     onGuess: (guess: string) => void;
+    /** The current state of the game for the player. */
     gameState: 'playing' | 'won' | 'lost' | 'finished';
+    /** An array of guesses made by the player so far. */
     guesses: string[];
+    /** The language of the game ('en' or 'he'). Defaults to 'en'. */
     language?: 'en' | 'he';
+    /** The length of the target word. Defaults to 5. */
     wordLength?: number;
 }
 
+/**
+ * The main game board component containing the grid and the keyboard.
+ * Handles user input via mouse/touch (virtual keyboard) and physical keyboard.
+ *
+ * @param props - The props for the GameBoard component.
+ * @returns The rendered GameBoard component.
+ */
 export default function GameBoard({ currentWord, onGuess, gameState, guesses, language = 'en', wordLength = 5 }: GameBoardProps) {
     const [currentGuess, setCurrentGuess] = useState("");
 

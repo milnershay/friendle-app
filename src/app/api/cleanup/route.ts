@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { initializeApp, getApps, cert } from 'firebase-admin/app';
+import { initializeApp, getApps } from 'firebase-admin/app';
 import { getDatabase } from 'firebase-admin/database';
 
 // Initialize Firebase Admin (only once)
@@ -9,6 +9,14 @@ if (getApps().length === 0) {
   });
 }
 
+/**
+ * API route to cleanup old rooms.
+ * Designed to be called by a cron job (e.g., Vercel Cron).
+ * Requires authorization via `CRON_SECRET`.
+ *
+ * @param request - The incoming request.
+ * @returns A JSON response with the result of the cleanup.
+ */
 export async function GET(request: NextRequest) {
   try {
     // Verify this is called by Vercel Cron or authorized source

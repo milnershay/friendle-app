@@ -2,7 +2,9 @@
  * Input validation and rate limiting utilities
  */
 
-// Validation constants
+/**
+ * Validation constants used throughout the application.
+ */
 export const VALIDATION = {
   USERNAME: {
     MIN_LENGTH: 1,
@@ -21,7 +23,9 @@ export const VALIDATION = {
   },
 } as const;
 
-// Rate limiting storage
+/**
+ * Internal interface for tracking rate limit entries.
+ */
 interface RateLimitEntry {
   count: number;
   firstAttempt: number;
@@ -30,7 +34,10 @@ interface RateLimitEntry {
 const rateLimitStore = new Map<string, RateLimitEntry>();
 
 /**
- * Validate username
+ * Validates a username against the defined rules.
+ *
+ * @param username - The username to validate.
+ * @returns An object containing a boolean `valid` status and an optional `error` message.
  */
 export function validateUsername(username: string): { valid: boolean; error?: string } {
   if (!username || username.trim().length === 0) {
@@ -55,7 +62,10 @@ export function validateUsername(username: string): { valid: boolean; error?: st
 }
 
 /**
- * Validate room code format
+ * Validates a room code format.
+ *
+ * @param code - The room code to validate.
+ * @returns An object containing a boolean `valid` status and an optional `error` message.
  */
 export function validateRoomCode(code: string): { valid: boolean; error?: string } {
   if (!code || code.length === 0) {
@@ -76,7 +86,12 @@ export function validateRoomCode(code: string): { valid: boolean; error?: string
 }
 
 /**
- * Validate custom word
+ * Validates a custom word for the game queue.
+ *
+ * @param word - The word to validate.
+ * @param language - The language of the word ('en' or 'he').
+ * @param length - The expected length of the word.
+ * @returns An object containing a boolean `valid` status and an optional `error` message.
  */
 export function validateWord(word: string, language: 'en' | 'he', length: number): { valid: boolean; error?: string } {
   if (!word || word.trim().length === 0) {
@@ -98,8 +113,12 @@ export function validateWord(word: string, language: 'en' | 'he', length: number
 }
 
 /**
- * Rate limiting for room creation
- * Limits to maxAttempts per windowMs
+ * Checks if a user is within the rate limit for a specific action.
+ *
+ * @param key - The unique key for the rate limit bucket (usually based on user ID and action).
+ * @param maxAttempts - The maximum number of allowed attempts within the window. Defaults to 5.
+ * @param windowMs - The time window in milliseconds. Defaults to 60000 (1 minute).
+ * @returns An object containing a boolean `allowed` status and an optional `retryAfter` duration in seconds.
  */
 export function checkRateLimit(
   key: string,
@@ -130,15 +149,21 @@ export function checkRateLimit(
 }
 
 /**
- * Sanitize text input (remove excessive whitespace, trim)
+ * Sanitizes text input by trimming and removing excessive whitespace.
+ *
+ * @param text - The text to sanitize.
+ * @returns The sanitized text.
  */
 export function sanitizeText(text: string): string {
   return text.trim().replace(/\s+/g, ' ');
 }
 
 /**
- * Generate a rate limit key based on user identifier
- * Uses localStorage user ID if available, otherwise falls back to a session ID
+ * Generates a rate limit key based on user identifier.
+ * Uses localStorage user ID if available, otherwise falls back to a session ID.
+ *
+ * @param action - The action identifier (e.g., 'create_room').
+ * @returns A unique key for rate limiting.
  */
 export function getRateLimitKey(action: string): string {
   // Try to get a stable identifier
@@ -166,14 +191,18 @@ export function getRateLimitKey(action: string): string {
 }
 
 /**
- * Clear rate limit for a specific key (useful for testing)
+ * Clears the rate limit for a specific key.
+ * Useful for testing or resetting limits.
+ *
+ * @param key - The key to clear.
  */
 export function clearRateLimit(key: string): void {
   rateLimitStore.delete(key);
 }
 
 /**
- * Clear all rate limits (useful for testing)
+ * Clears all rate limits.
+ * Useful for testing.
  */
 export function clearAllRateLimits(): void {
   rateLimitStore.clear();

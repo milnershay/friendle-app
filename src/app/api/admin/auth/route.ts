@@ -4,6 +4,13 @@ import { cookies } from 'next/headers';
 // Server-side only - this environment variable is NOT exposed to the browser
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'friendle_admin_2024';
 
+/**
+ * Handles admin login.
+ * Verifies the password and sets an HTTP-only session cookie.
+ *
+ * @param request - The incoming request containing the password.
+ * @returns A JSON response indicating success or failure.
+ */
 export async function POST(request: NextRequest) {
   try {
     const { password } = await request.json();
@@ -26,11 +33,19 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({ success: false, error: 'Invalid password' }, { status: 401 });
-  } catch (error) {
+  } catch {
     return NextResponse.json({ success: false, error: 'Invalid request' }, { status: 400 });
   }
 }
 
+/**
+ * Checks if the current user is authenticated as an admin.
+ * Verifies the session cookie.
+ *
+ * @param request - The incoming request.
+ * @returns A JSON response with the authentication status.
+ */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export async function GET(request: NextRequest) {
   try {
     const cookieStore = await cookies();
@@ -53,11 +68,19 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json({ authenticated: false }, { status: 401 });
-  } catch (error) {
+  } catch {
     return NextResponse.json({ authenticated: false }, { status: 401 });
   }
 }
 
+/**
+ * Handles admin logout.
+ * Deletes the session cookie.
+ *
+ * @param request - The incoming request.
+ * @returns A JSON response indicating success.
+ */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export async function DELETE(request: NextRequest) {
   const cookieStore = await cookies();
   cookieStore.delete('admin_session');

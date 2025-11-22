@@ -5,11 +5,18 @@ import "./globals.css";
 
 const inter = Inter({ subsets: ["latin"] });
 
+/**
+ * Metadata for the application.
+ */
 export const metadata: Metadata = {
   title: "Friendle - Shared Wordle",
   description: "Play Wordle with friends!",
 };
 
+/**
+ * Viewport configuration for the application.
+ * Ensures the app is responsive and scalable.
+ */
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
@@ -17,6 +24,14 @@ export const viewport: Viewport = {
   userScalable: true,
 };
 
+/**
+ * Root layout component for the application.
+ * Wraps all pages and applies global styles and analytics.
+ *
+ * @param props - The component props.
+ * @param props.children - The child components (pages) to render.
+ * @returns The root layout structure.
+ */
 export default function RootLayout({
   children,
 }: Readonly<{
