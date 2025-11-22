@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
 import { db } from "@/lib/firebase";
-import { ref, onValue, set, update, get, onDisconnect, runTransaction } from "firebase/database";
+import { ref, onValue, set, update, get, runTransaction } from "firebase/database";
 import GameBoard from "@/components/game/GameBoard";
 import { WORD_LISTS } from "@/lib/wordLists";
 import { useTranslation, getStoredLanguage, type Language } from "@/lib/i18n";
@@ -154,7 +154,6 @@ export default function RoomPage() {
         setUserId(storedId);
 
         const roomRef = ref(db, `rooms/${roomId}`);
-        const playerRef = ref(db, `rooms/${roomId}/players/${storedId}`);
 
         // Subscribe to room updates
         const unsubscribe = onValue(roomRef, (snapshot) => {
@@ -218,7 +217,7 @@ export default function RoomPage() {
                 if (!currentRoom) return;
 
                 let wordObj: { word: string; suggester?: string } | undefined;
-                let newQueue = [...(currentRoom.wordQueue || [])];
+                const newQueue = [...(currentRoom.wordQueue || [])];
                 let gameLang: 'en' | 'he';
                 let gameLength: number;
                 let nextRoutineIndex = currentRoom.routineIndex;
@@ -234,7 +233,7 @@ export default function RoomPage() {
                     gameLength = currentGame.wordLength;
 
                     // Get word for this category
-                    // @ts-ignore
+                    // @ts-expect-error Dynamic access to WORD_LISTS may fail type check
                     const words = WORD_LISTS[gameLang]?.[gameLength] || WORD_LISTS.en[5];
                     const randomWord = words[Math.floor(Math.random() * words.length)];
                     wordObj = { word: randomWord };
@@ -245,7 +244,7 @@ export default function RoomPage() {
                 } else {
                     gameLang = currentRoom.settings.language || 'en';
                     gameLength = currentRoom.settings.wordLength || 5;
-                    // @ts-ignore
+                    // @ts-expect-error Dynamic access to WORD_LISTS may fail type check
                     const words = WORD_LISTS[gameLang]?.[gameLength] || WORD_LISTS.en[5];
                     const randomWord = words[Math.floor(Math.random() * words.length)];
                     wordObj = { word: randomWord };
@@ -309,7 +308,7 @@ export default function RoomPage() {
         let newStatus = player.status;
         let newScore = player.score;
 
-        const updateData: any = {
+        const updateData: Record<string, unknown> = {
             guesses: JSON.stringify(newGuesses),
             status: newStatus,
             score: newScore,
@@ -435,7 +434,7 @@ export default function RoomPage() {
         if (allFinished) {
             // Only one person needs to update this. Let's say the Host (first key sorted?).
             // Or just anyone. If multiple update, it's fine, idempotent.
-            const updatePayload: any = {
+            const updatePayload: Record<string, unknown> = {
                 gameState: 'finished'
             };
 
@@ -450,26 +449,28 @@ export default function RoomPage() {
 
     // Effect to show results modal and auto-advance
     useEffect(() => {
-        if (!room || room.gameState !== 'finished') {
+        if (!room) return;
+
+        if (room.gameState === 'finished') {
+             // Show results modal
+            setShowResultsModal(true);
+
+            // Auto-advance to next game after 5 seconds if using routine
+            if (room.settings.useRoutine) {
+                const timer = setTimeout(() => {
+                    setShowResultsModal(false);
+                    // Small delay before starting next game for smooth transition
+                    setTimeout(() => {
+                        startGame();
+                    }, 500);
+                }, 5000);
+
+                return () => clearTimeout(timer);
+            }
+        } else {
             setShowResultsModal(false);
-            return;
         }
-
-        // Show results modal
-        setShowResultsModal(true);
-
-        // Auto-advance to next game after 5 seconds if using routine
-        if (room.settings.useRoutine) {
-            const timer = setTimeout(() => {
-                setShowResultsModal(false);
-                // Small delay before starting next game for smooth transition
-                setTimeout(() => {
-                    startGame();
-                }, 500);
-            }, 5000);
-
-            return () => clearTimeout(timer);
-        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [room?.gameState, room?.settings.useRoutine]);
 
 
@@ -949,9 +950,9 @@ export default function RoomPage() {
                                 <div className="text-4xl md:text-5xl font-black bg-gradient-to-r from-green-400 to-emerald-500 text-transparent bg-clip-text mb-4 tracking-widest">
                                     {room.currentWord}
                                 </div>
-                                {/* @ts-ignore */}
+                                {/* @ts-expect-error room.currentSuggester might be undefined in type definition but present in data */}
                                 {room.currentSuggester && (
-                                    /* @ts-ignore */
+                                    /* @ts-expect-error room.currentSuggester might be undefined in type definition but present in data */
                                     <div className="inline-block bg-white/10 px-3 py-1 rounded-full text-sm text-slate-300 border border-white/5">
                                         {t.room.suggestedBy} <span className="text-indigo-300 font-bold">{room.currentSuggester}</span>
                                     </div>
