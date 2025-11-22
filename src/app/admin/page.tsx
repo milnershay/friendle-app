@@ -25,7 +25,7 @@ export default function AdminPage() {
             const response = await fetch('/api/admin/auth');
             const data = await response.json();
             setIsAuthenticated(data.authenticated);
-        } catch (error) {
+        } catch {
             setIsAuthenticated(false);
         } finally {
             setCheckingAuth(false);
@@ -53,7 +53,7 @@ export default function AdminPage() {
                 setAuthError("Incorrect password");
                 setPassword("");
             }
-        } catch (error) {
+        } catch {
             setAuthError("Authentication failed. Please try again.");
         } finally {
             setLoading(false);
@@ -63,7 +63,7 @@ export default function AdminPage() {
     const handleLogout = async () => {
         try {
             await fetch('/api/admin/auth', { method: 'DELETE' });
-        } catch (error) {
+        } catch {
             // Ignore error
         }
         setIsAuthenticated(false);
