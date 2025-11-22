@@ -31,7 +31,13 @@ export default function GameView({ room, myPlayer, onGuess }: GameViewProps) {
             <GameBoard
                 currentWord={room.currentWord}
                 onGuess={onGuess}
-                gameState={myPlayer?.status === 'playing' ? 'playing' : (myPlayer?.status === 'won' ? 'won' : (myPlayer?.status === 'lost' ? 'lost' : 'finished'))}
+                gameState={(() => {
+                    if (room.gameState === 'finished') return 'finished';
+                    if (myPlayer?.status === 'won') return 'won';
+                    if (myPlayer?.status === 'lost') return 'lost';
+                    if (room.gameState === 'playing') return 'playing';
+                    return 'finished';
+                })()}
                 guesses={parseGuesses(myPlayer?.guesses)}
                 language={room.settings.language || 'en'}
                 wordLength={room.currentWord ? room.currentWord.length : (room.settings.wordLength || 5)}
