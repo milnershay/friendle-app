@@ -2,7 +2,6 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import Home from './page';
 import * as navigation from 'next/navigation';
-import * as validation from '@/lib/validation';
 
 // Mock useRouter
 vi.mock('next/navigation', () => ({
@@ -25,6 +24,7 @@ describe('Home Page', () => {
 
     beforeEach(() => {
         vi.clearAllMocks();
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (navigation.useRouter as any).mockReturnValue({
             push: pushMock,
         });
