@@ -18,7 +18,6 @@ export default defineConfig({
                 'src/**/*.test.{ts,tsx}',
                 'src/**/*.stories.{ts,tsx}',
                 'src/app/layout.tsx', // Often hard to test/not containing logic
-                'src/app/api/**', // API routes might need different testing strategy
             ],
             provider: 'v8',
         },
