@@ -24,6 +24,7 @@ export async function cleanupOldRooms(maxAgeHours: number = 24) {
 
         for (const [roomId, roomData] of Object.entries(rooms)) {
             totalRooms++;
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const room = roomData as any;
 
             // Check last activity time
@@ -35,6 +36,7 @@ export async function cleanupOldRooms(maxAgeHours: number = 24) {
             // 2. Room has no players OR all players are in waiting state with no scores
             const hasNoActivity = age > maxAge;
             const isEmpty = !room.players || Object.keys(room.players).length === 0;
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const hasNoScores = room.players && Object.values(room.players).every((p: any) => p.score === 0);
 
             if (hasNoActivity && (isEmpty || hasNoScores)) {
@@ -92,8 +94,10 @@ export async function getRoomStats() {
         let oldRooms = 0;
         let totalPlayers = 0;
 
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         for (const [roomId, roomData] of Object.entries(rooms)) {
             totalRooms++;
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const room = roomData as any;
 
             const lastActivity = room.startTime || 0;
