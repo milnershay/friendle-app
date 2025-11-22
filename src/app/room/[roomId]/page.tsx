@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
 import { db } from "@/lib/firebase";
-import { ref, onValue, set, update, get, onDisconnect } from "firebase/database";
+import { ref, onValue, set, update, get, runTransaction } from "firebase/database";
 import GameBoard from "@/components/game/GameBoard";
 import { WORD_LISTS } from "@/lib/wordLists";
 import { useTranslation, getStoredLanguage, type Language } from "@/lib/i18n";
@@ -43,6 +43,7 @@ interface Player {
     endTime?: number;
     history?: string; // Stored as JSON string - GameHistory[]
     stats?: string; // Stored as JSON string - PlayerStats
+    firstGuessTime?: number;
 }
 
 // Helper function to parse guesses from Firebase
@@ -153,7 +154,6 @@ export default function RoomPage() {
         setUserId(storedId);
 
         const roomRef = ref(db, `rooms/${roomId}`);
-        const playerRef = ref(db, `rooms/${roomId}/players/${storedId}`);
 
         // Subscribe to room updates
         const unsubscribe = onValue(roomRef, (snapshot) => {
@@ -211,81 +211,84 @@ export default function RoomPage() {
         }
 
         try {
-            let wordObj: { word: string; suggester?: string } | undefined;
-            const newQueue = [...(room.wordQueue || [])];
-            let gameLang: 'en' | 'he';
-            let gameLength: number;
+            const roomRef = ref(db, `rooms/${roomId}`);
 
-            // Check if using daily routine
-            if (room.settings.useRoutine && room.settings.dailyRoutine && room.settings.dailyRoutine.length > 0) {
-                const routine = room.settings.dailyRoutine;
-                const currentIndex = room.routineIndex || 0;
-                const nextIndex = (currentIndex + 1) % routine.length;
-                const currentGame = routine[currentIndex];
+            runTransaction(roomRef, (currentRoom: RoomData | null) => {
+                if (!currentRoom) return;
 
-                gameLang = currentGame.language;
-                gameLength = currentGame.wordLength;
+                let wordObj: { word: string; suggester?: string } | undefined;
+                const newQueue = [...(currentRoom.wordQueue || [])];
+                let gameLang: 'en' | 'he';
+                let gameLength: number;
+                let nextRoutineIndex = currentRoom.routineIndex;
 
-                // Get word for this category
-                // @ts-expect-error - Dynamic access to WORD_LISTS might fail type check but is safe here
-                const words = WORD_LISTS[gameLang]?.[gameLength] || WORD_LISTS.en[5];
-                const randomWord = words[Math.floor(Math.random() * words.length)];
-                wordObj = { word: randomWord };
+                // Check if using daily routine
+                if (currentRoom.settings.useRoutine && currentRoom.settings.dailyRoutine && currentRoom.settings.dailyRoutine.length > 0) {
+                    const routine = currentRoom.settings.dailyRoutine;
+                    const currentIndex = currentRoom.routineIndex || 0;
+                    nextRoutineIndex = (currentIndex + 1) % routine.length;
+                    const currentGame = routine[currentIndex];
 
-                // Update routine index for next game
-                update(ref(db, `rooms/${roomId}`), {
-                    routineIndex: nextIndex
+                    gameLang = currentGame.language;
+                    gameLength = currentGame.wordLength;
+
+                    // Get word for this category
+                    // @ts-expect-error Dynamic access to WORD_LISTS may fail type check
+                    const words = WORD_LISTS[gameLang]?.[gameLength] || WORD_LISTS.en[5];
+                    const randomWord = words[Math.floor(Math.random() * words.length)];
+                    wordObj = { word: randomWord };
+                } else if (newQueue.length > 0) {
+                    wordObj = newQueue.shift();
+                    gameLang = currentRoom.settings.language || 'en';
+                    gameLength = currentRoom.settings.wordLength || 5;
+                } else {
+                    gameLang = currentRoom.settings.language || 'en';
+                    gameLength = currentRoom.settings.wordLength || 5;
+                    // @ts-expect-error Dynamic access to WORD_LISTS may fail type check
+                    const words = WORD_LISTS[gameLang]?.[gameLength] || WORD_LISTS.en[5];
+                    const randomWord = words[Math.floor(Math.random() * words.length)];
+                    wordObj = { word: randomWord };
+                }
+
+                const word = wordObj?.word;
+
+                // Reset players
+                const updatedPlayers = { ...(currentRoom.players || {}) };
+                Object.keys(updatedPlayers).forEach(key => {
+                    updatedPlayers[key] = {
+                        ...updatedPlayers[key],
+                        status: 'playing',
+                        guesses: JSON.stringify([]),
+                    };
+                    // Remove endTime, timeTaken, and firstGuessTime properties entirely
+                    delete updatedPlayers[key].endTime;
+                    delete updatedPlayers[key].timeTaken;
+                    delete updatedPlayers[key].firstGuessTime;
                 });
-            } else if (newQueue.length > 0) {
-                wordObj = newQueue.shift();
-                gameLang = room.settings.language || 'en';
-                gameLength = room.settings.wordLength || 5;
-            } else {
-                gameLang = room.settings.language || 'en';
-                gameLength = room.settings.wordLength || 5;
-                // @ts-expect-error - Dynamic access to WORD_LISTS might fail type check but is safe here
-                const words = WORD_LISTS[gameLang]?.[gameLength] || WORD_LISTS.en[5];
-                const randomWord = words[Math.floor(Math.random() * words.length)];
-                wordObj = { word: randomWord };
-            }
 
-            const word = wordObj?.word;
-
-            // Reset players
-            const updatedPlayers = { ...room.players };
-            Object.keys(updatedPlayers).forEach(key => {
-                updatedPlayers[key] = {
-                    ...updatedPlayers[key],
-                    status: 'playing',
-                    guesses: JSON.stringify([]),
+                // Return updated room state
+                return {
+                    ...currentRoom,
+                    currentWord: word?.toUpperCase(),
+                    currentSuggester: wordObj?.suggester || null,
+                    gameState: 'playing',
+                    startTime: Date.now(),
+                    wordQueue: newQueue,
+                    players: updatedPlayers,
+                    routineIndex: nextRoutineIndex,
+                    settings: {
+                        ...currentRoom.settings,
+                        wordLength: gameLength,
+                        language: gameLang
+                    }
                 };
-                // Remove endTime and timeTaken properties entirely
-                delete updatedPlayers[key].endTime;
-                delete updatedPlayers[key].timeTaken;
-            });
-
-            console.log("Starting game with word:", word);
-
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const updatePayload: any = {
-                currentWord: word?.toUpperCase(),
-                currentSuggester: wordObj?.suggester || null,
-                gameState: 'playing',
-                startTime: Date.now(),
-                wordQueue: newQueue,
-                players: updatedPlayers
-            };
-
-            // Update settings to match the current game (important for routines)
-            updatePayload['settings/wordLength'] = gameLength;
-            updatePayload['settings/language'] = gameLang;
-
-            update(ref(db, `rooms/${roomId}`), updatePayload).then(() => {
+            }).then(() => {
                 console.log("Game started successfully");
             }).catch((error) => {
                 console.error("Failed to start game:", error);
                 setError(`Failed to start game: ${error.message}`);
             });
+
         } catch (error) {
             console.error("Error in startGame:", error);
             setError(`Error starting game: ${error}`);
@@ -305,12 +308,18 @@ export default function RoomPage() {
         let newStatus = player.status;
         let newScore = player.score;
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const updateData: any = {
+        const updateData: Record<string, unknown> = {
             guesses: JSON.stringify(newGuesses),
             status: newStatus,
             score: newScore,
         };
+
+        // First guess time tracking
+        let firstGuessT = player.firstGuessTime;
+        if (newGuesses.length === 1 && !firstGuessT) {
+            firstGuessT = Date.now();
+            updateData.firstGuessTime = firstGuessT;
+        }
 
         let gameCompleted = false;
         let won = false;
@@ -319,7 +328,10 @@ export default function RoomPage() {
         if (guess === room.currentWord) {
             newStatus = 'won';
             const endTime = Date.now();
-            const timeTaken = (endTime - room.startTime) / 1000;
+            // Timer calculation: endTime - (firstGuessTime || startTime)
+            const startTime = firstGuessT || room.startTime;
+            const timeTaken = (endTime - startTime) / 1000;
+
             newScore += 1;
             updateData.status = 'won';
             updateData.score = newScore;
@@ -332,7 +344,10 @@ export default function RoomPage() {
             newStatus = 'lost';
             updateData.status = 'lost';
             const endTime = Date.now();
-            const timeTaken = (endTime - room.startTime) / 1000;
+            // Timer calculation for lost game
+            const startTime = firstGuessT || room.startTime;
+            const timeTaken = (endTime - startTime) / 1000;
+
             updateData.endTime = endTime;
             updateData.timeTaken = timeTaken;
             gameCompleted = true;
@@ -419,8 +434,7 @@ export default function RoomPage() {
         if (allFinished) {
             // Only one person needs to update this. Let's say the Host (first key sorted?).
             // Or just anyone. If multiple update, it's fine, idempotent.
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const updatePayload: any = {
+            const updatePayload: Record<string, unknown> = {
                 gameState: 'finished'
             };
 
@@ -435,29 +449,26 @@ export default function RoomPage() {
 
     // Effect to show results modal and auto-advance
     useEffect(() => {
-        // Only reset if we are NOT finished.
-        if (room && room.gameState !== 'finished') {
+        if (!room) return;
+
+        if (room.gameState === 'finished') {
+             // Show results modal
+            setShowResultsModal(true);
+
+            // Auto-advance to next game after 5 seconds if using routine
+            if (room.settings.useRoutine) {
+                const timer = setTimeout(() => {
+                    setShowResultsModal(false);
+                    // Small delay before starting next game for smooth transition
+                    setTimeout(() => {
+                        startGame();
+                    }, 500);
+                }, 5000);
+
+                return () => clearTimeout(timer);
+            }
+        } else {
             setShowResultsModal(false);
-        }
-
-        if (!room || room.gameState !== 'finished') {
-            return;
-        }
-
-        // Show results modal
-        setShowResultsModal(true);
-
-        // Auto-advance to next game after 5 seconds if using routine
-        if (room.settings.useRoutine) {
-            const timer = setTimeout(() => {
-                setShowResultsModal(false);
-                // Small delay before starting next game for smooth transition
-                setTimeout(() => {
-                    startGame();
-                }, 500);
-            }, 5000);
-
-            return () => clearTimeout(timer);
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [room?.gameState, room?.settings.useRoutine]);
@@ -523,6 +534,7 @@ export default function RoomPage() {
             };
             delete updatedPlayers[key].endTime;
             delete updatedPlayers[key].timeTaken;
+            delete updatedPlayers[key].firstGuessTime;
         });
 
         update(ref(db, `rooms/${roomId}`), {
@@ -938,7 +950,9 @@ export default function RoomPage() {
                                 <div className="text-4xl md:text-5xl font-black bg-gradient-to-r from-green-400 to-emerald-500 text-transparent bg-clip-text mb-4 tracking-widest">
                                     {room.currentWord}
                                 </div>
+                                {/* @ts-expect-error room.currentSuggester might be undefined in type definition but present in data */}
                                 {room.currentSuggester && (
+                                    /* @ts-expect-error room.currentSuggester might be undefined in type definition but present in data */
                                     <div className="inline-block bg-white/10 px-3 py-1 rounded-full text-sm text-slate-300 border border-white/5">
                                         {t.room.suggestedBy} <span className="text-indigo-300 font-bold">{room.currentSuggester}</span>
                                     </div>
