@@ -93,6 +93,8 @@ export const translations = {
             hebrew: 'Hebrew',
             confirm: 'Confirm',
             cancel: 'Cancel',
+            next: 'Next',
+            back: 'Back',
         }
     },
     he: {
@@ -180,6 +182,8 @@ export const translations = {
             hebrew: 'עברית',
             confirm: 'אישור',
             cancel: 'ביטול',
+            next: 'הבא',
+            back: 'חזור',
         }
     }
 };
