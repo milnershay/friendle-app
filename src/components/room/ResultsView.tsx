@@ -1,5 +1,6 @@
 import { RoomData, parseGuesses } from "@/hooks/useRoom";
 import { useTranslation } from "@/lib/i18n";
+import { useEffect } from "react";
 
 interface ResultsViewProps {
     room: RoomData;
@@ -11,11 +12,25 @@ export default function ResultsView({ room, onClose, onStartGame }: ResultsViewP
     const t = useTranslation(room.settings.language || 'en');
     const playerList = Object.values(room.players || {});
 
+    useEffect(() => {
+        const handleKeyDown = (event: KeyboardEvent) => {
+            if (event.key === 'Escape') {
+                onClose();
+            }
+        };
+
+        document.addEventListener('keydown', handleKeyDown);
+
+        return () => {
+            document.removeEventListener('keydown', handleKeyDown);
+        };
+    }, [onClose]);
+
     return (
-        <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="results-title">
             <div className="bg-slate-900 max-w-lg w-full rounded-xl p-6 border border-slate-700 shadow-2xl">
                 <div className="text-center mb-6">
-                    <h2 className="text-2xl md:text-3xl font-bold mb-2 text-white">
+                    <h2 className="text-2xl md:text-3xl font-bold mb-2 text-white" id="results-title">
                         {t.room.gameOver}
                     </h2>
                     {room.settings.useRoutine && (

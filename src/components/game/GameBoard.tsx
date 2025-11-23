@@ -42,6 +42,7 @@ interface GameBoardProps {
  */
 export default function GameBoard({ currentWord, onGuess, gameState, guesses, language = 'en', wordLength = 5 }: GameBoardProps) {
     const [currentGuess, setCurrentGuess] = useState("");
+    const [announcement, setAnnouncement] = useState("");
 
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
@@ -65,6 +66,19 @@ export default function GameBoard({ currentWord, onGuess, gameState, guesses, la
         return () => window.removeEventListener("keydown", handleKeyDown);
     }, [currentGuess, gameState, onGuess, wordLength]);
 
+    // Announce guess results for screen readers
+    useEffect(() => {
+        if (guesses.length === 0 || !currentWord) return;
+
+        const lastGuess = guesses[guesses.length - 1];
+        const statuses = checkGuess(lastGuess, currentWord);
+        const guessAnnouncement = lastGuess.split('').map((letter, i) => {
+            return `${letter}: ${statuses[i]}`;
+        }).join(', ');
+        setAnnouncement(guessAnnouncement);
+
+    }, [guesses, currentWord]);
+
     // Calculate letter statuses for keyboard
     const letterStatuses: Record<string, LetterStatus> = {};
     guesses.forEach((guess) => {
@@ -83,10 +97,14 @@ export default function GameBoard({ currentWord, onGuess, gameState, guesses, la
         });
     });
 
-    const keyboardLayout = KEYBOARD_LAYOUTS[language as keyof typeof KEYBOARD_LAYOUTS] || KEYBOARD_LAYOUTS.en;
+    const keyboardLayout = KEYBOARD_LAYOUTS[language as keyof typeof KEYROW_LAYOUTS] || KEYBOARD_LAYOUTS.en;
 
     return (
         <div data-testid="game-board" className="flex flex-col items-center gap-2 md:gap-8 w-full max-w-lg mx-auto pb-2 px-1" dir={language === 'he' ? 'rtl' : 'ltr'}>
+            {/* Screen reader announcement region */}
+            <div className="sr-only" aria-live="polite" aria-atomic="true">
+                {announcement}
+            </div>
             {/* Grid */}
             <div className="grid gap-1 md:gap-2 w-full max-w-[min(330px,100%)] mx-auto" style={{ gridTemplateRows: `repeat(6, minmax(0, 1fr))` }}>
                 {Array.from({ length: 6 }).map((_, rowIndex) => {
