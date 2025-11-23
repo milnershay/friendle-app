@@ -51,6 +51,10 @@ export default function GameBoard({ currentWord, onGuess, gameState, guesses, la
                 if (currentGuess.length === wordLength) {
                     onGuess(currentGuess.toUpperCase());
                     setCurrentGuess("");
+                    // Attempt to dismiss keyboard on mobile
+                    if (document.activeElement instanceof HTMLElement) {
+                        document.activeElement.blur();
+                    }
                 }
             } else if (e.key === "Backspace") {
                 setCurrentGuess(prev => prev.slice(0, -1));
@@ -152,7 +156,7 @@ export default function GameBoard({ currentWord, onGuess, gameState, guesses, la
                                         }
                                     }}
                                     className={cn(
-                                        "py-3.5 sm:py-4 px-0.5 sm:px-1 md:px-3 md:py-5 rounded-lg font-bold text-sm md:text-base transition-all flex-1 active:scale-95 active:opacity-70 touch-manipulation select-none shadow-md",
+                                        "py-3.5 sm:py-4 px-0.5 sm:px-1 md:px-3 md:py-5 rounded-lg font-bold text-sm md:text-base transition-all flex-1 active:scale-95 active:opacity-70 touch-manipulation select-none shadow-md cursor-pointer",
                                         status === 'empty' && "bg-slate-600 active:bg-slate-500 text-white",
                                         status === 'correct' && "bg-green-600 text-white",
                                         status === 'present' && "bg-yellow-600 text-white",

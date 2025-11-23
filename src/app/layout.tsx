@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Analytics } from "@vercel/analytics/next";
 import { Inter } from "next/font/google";
+import { Toaster } from "react-hot-toast";
 import "./globals.css";
 import VersionDisplay from "@/components/ui/VersionDisplay";
 
@@ -43,6 +44,15 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
+        <Toaster
+          position="top-center"
+          toastOptions={{
+            style: {
+              background: '#334155',
+              color: '#fff',
+            },
+          }}
+        />
         {children}
         <VersionDisplay />
         <Analytics />

@@ -61,6 +61,7 @@ export const translations = {
             suggestedBy: '💡 Suggested by',
             leaveRoom: 'Leave Room',
             confirmLeave: 'Are you sure you want to leave this room?',
+            codeCopied: 'Room code copied to clipboard!',
         },
         // Admin page
         admin: {
@@ -150,6 +151,7 @@ export const translations = {
             suggestedBy: '💡 הוצעה על ידי',
             leaveRoom: 'עזוב חדר',
             confirmLeave: 'האם אתה בטוח שברצונך לעזוב את החדר?',
+            codeCopied: 'קוד החדר הועתק!',
         },
         // Admin page
         admin: {

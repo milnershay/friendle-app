@@ -2,11 +2,13 @@
 
 import { useState, useEffect } from "react";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
+import { Loader } from "lucide-react";
 import { useRoom } from "@/hooks/useRoom";
-import RoomLobby from "@/components/room/RoomLobby";
+import RoomContent from "@/components/room/RoomContent";
 import GameView from "@/components/room/GameView";
 import ResultsView from "@/components/room/ResultsView";
 import PlayerList from "@/components/room/PlayerList";
+import RoomSkeleton from "@/components/room/RoomSkeleton";
 import { useTranslation } from "@/lib/i18n";
 
 export default function RoomPage() {
@@ -20,6 +22,7 @@ export default function RoomPage() {
         userId,
         loading,
         error,
+        actionLoading,
         startGame,
         submitGuess,
         updateSettings,
@@ -30,6 +33,12 @@ export default function RoomPage() {
     } = useRoom(roomId as string, username);
 
     const [activeTab, setActiveTab] = useState<'game' | 'players'>('game');
+    const [prevTab, setPrevTab] = useState<'game' | 'players'>('game');
+
+    const handleTabChange = (tab: 'game' | 'players') => {
+        setPrevTab(activeTab);
+        setActiveTab(tab);
+    };
 
     // Always call hooks at the top level
     const [resultsDismissed, setResultsDismissed] = useState(false);
@@ -48,28 +57,25 @@ export default function RoomPage() {
 
     if (error) return (
         <div className="min-h-screen flex items-center justify-center bg-slate-900 text-white p-4">
-            <div className="bg-red-900/50 border border-red-500 rounded-xl p-6 max-w-md glass">
-                <h2 className="text-xl font-bold mb-2 text-red-400">Error</h2>
-                <p>{error}</p>
-                <button onClick={() => router.push("/")} className="mt-4 bg-slate-700 hover:bg-slate-600 px-4 py-2 rounded-lg transition-colors">Go Home</button>
+            <div className="bg-red-900/50 border border-red-500 rounded-xl p-6 max-w-md glass text-center">
+                <h2 className="text-xl font-bold mb-2 text-red-400">Connection Error</h2>
+                <p className="text-red-300 mb-4">{error}</p>
+                <p className="text-sm text-slate-400 mb-6">Could not connect to the room. Please check your internet connection and try again.</p>
+                <div className="flex gap-4">
+                    <button onClick={() => window.location.reload()} className="flex-1 bg-purple-600 hover:bg-purple-500 px-4 py-2 rounded-lg transition-colors font-semibold">Retry</button>
+                    <button onClick={() => router.push("/")} className="flex-1 bg-slate-700 hover:bg-slate-600 px-4 py-2 rounded-lg transition-colors">Go Home</button>
+                </div>
             </div>
         </div>
     );
 
-    if (loading || !room) return (
-        <div className="min-h-screen flex items-center justify-center bg-slate-900 text-white">
-            <div className="text-center">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-500 mx-auto mb-4"></div>
-                <p className="text-slate-400 text-sm animate-pulse">Connecting to room {roomId}</p>
-            </div>
-        </div>
-    );
+    if (loading || !room) return <RoomSkeleton />;
     const myPlayer = room.players && room.players[userId];
     const playerList = Object.values(room.players || {});
     const isHost = playerList[0]?.id === userId;
 
     const handleLeaveRoom = () => {
-        if (confirm(t.room.confirmLeave)) {
+        if (window.confirm(t.room.confirmLeave)) {
             localStorage.removeItem(`friendle_uid_${roomId}`);
             router.push('/');
         }
@@ -124,13 +130,13 @@ export default function RoomPage() {
                 </div>
                 <div className="flex gap-1 bg-black/20 rounded-lg p-1">
                     <button
-                        onClick={() => setActiveTab('game')}
+                        onClick={() => handleTabChange('game')}
                         className={`px-4 py-1.5 rounded-md text-sm font-bold transition-all ${activeTab === 'game' ? 'bg-white/10 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'}`}
                     >
                         {t.room.game}
                     </button>
                     <button
-                        onClick={() => setActiveTab('players')}
+                        onClick={() => handleTabChange('players')}
                         className={`px-4 py-1.5 rounded-md text-sm font-bold transition-all ${activeTab === 'players' ? 'bg-white/10 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'}`}
                     >
                         {t.room.players}
@@ -138,11 +144,49 @@ export default function RoomPage() {
                 </div>
             </div>
 
-            {/* Sidebar (Desktop: always visible, Mobile: controlled by tab) */}
-            <div className={`
-                w-full md:w-80 glass md:border-r border-white/10 p-6 flex-col
-                ${activeTab === 'players' ? 'flex' : 'hidden md:flex'}
-            `}>
+            {/* Mobile Content Area */}
+            <div className="md:hidden flex-1 relative">
+                {/* Players List */}
+                <div className={`
+                    absolute top-0 left-0 w-full h-full p-6 flex-col
+                    transition-transform duration-300 ease-in-out
+                    ${activeTab === 'players' ? 'translate-x-0' : (prevTab === 'players' ? '-translate-x-full' : 'translate-x-full')}
+                `}>
+                    <PlayerList
+                        room={room}
+                        userId={userId}
+                        onLeaveRoom={handleLeaveRoom}
+                        onResetScores={clearScores}
+                        isHost={isHost}
+                    />
+                </div>
+
+                {/* Main Game Area */}
+                <div className={`
+                    absolute top-0 left-0 w-full h-full p-2 flex flex-col items-center justify-center overflow-y-auto
+                    transition-transform duration-300 ease-in-out
+                    ${activeTab === 'game' ? 'translate-x-0' : (prevTab === 'game' ? 'translate-x-full' : '-translate-x-full')}
+                `}>
+                    <RoomContent
+                        room={room}
+                        myPlayer={myPlayer}
+                        isHost={isHost}
+                        actionLoading={actionLoading}
+                        startGame={startGame}
+                        updateSettings={updateSettings}
+                        addCustomWord={addCustomWord}
+                        handleToggleRoutine={handleToggleRoutine}
+                        handleAddToRoutine={handleAddToRoutine}
+                        handleRemoveFromRoutine={handleRemoveFromRoutine}
+                        submitGuess={submitGuess}
+                    />
+                </div>
+            </div>
+
+            {/* --- Desktop Layout --- */}
+
+            {/* Sidebar (Desktop only) */}
+            <div className="w-full md:w-80 glass md:border-r border-white/10 p-6 flex-col hidden md:flex">
                 <PlayerList
                     room={room}
                     userId={userId}
@@ -154,46 +198,40 @@ export default function RoomPage() {
                 {room.gameState !== 'waiting' && room.gameState !== 'finished' && isHost && (
                     <div className="mt-4 flex gap-2">
                         <button
-                            onClick={skipWord}
+                            onClick={() => window.confirm("Are you sure you want to skip this word for everyone?") && skipWord()}
                             className="flex-1 bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-400 font-bold py-2 px-3 rounded-lg transition-all active:scale-[0.98] text-sm border border-yellow-500/20"
                             title={t.room.skipWord}
                         >
                             {t.room.skipWord}
                         </button>
                         <button
-                            onClick={resetRound}
-                            className="flex-1 bg-red-500/20 hover:bg-red-500/30 text-red-400 font-bold py-2 px-3 rounded-lg transition-all active:scale-[0.98] text-sm border border-red-500/20"
+                            onClick={() => window.confirm("Are you sure you want to reset the round? This will end the current game for everyone.") && resetRound()}
+                            disabled={actionLoading === 'reset'}
+                            className="flex-1 bg-red-500/20 hover:bg-red-500/30 text-red-400 font-bold py-2 px-3 rounded-lg transition-all active:scale-[0.98] text-sm border border-red-500/20 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                             title={t.room.resetRound}
                         >
+                            {actionLoading === 'reset' && <Loader className="animate-spin" size={16} />}
                             {t.room.resetRound}
                         </button>
                     </div>
                 )}
             </div>
 
-            {/* Main Game Area */}
-            <div className={`
-                flex-1 p-2 md:p-8 flex flex-col items-center justify-center overflow-y-auto
-                ${activeTab === 'game' ? 'flex' : 'hidden md:flex'}
-            `}>
-                {room.gameState === 'waiting' ? (
-                    <RoomLobby
-                        room={room}
-                        isHost={isHost}
-                        onStartGame={startGame}
-                        onUpdateSettings={updateSettings}
-                        onAddCustomWord={addCustomWord}
-                        onToggleRoutine={handleToggleRoutine}
-                        onAddToRoutine={handleAddToRoutine}
-                        onRemoveFromRoutine={handleRemoveFromRoutine}
-                    />
-                ) : (
-                    <GameView
-                        room={room}
-                        myPlayer={myPlayer}
-                        onGuess={submitGuess}
-                    />
-                )}
+            {/* Main Game Area (Desktop only) */}
+            <div className="flex-1 p-2 md:p-8 flex-col items-center justify-center overflow-y-auto hidden md:flex">
+                <RoomContent
+                    room={room}
+                    myPlayer={myPlayer}
+                    isHost={isHost}
+                    actionLoading={actionLoading}
+                    startGame={startGame}
+                    updateSettings={updateSettings}
+                    addCustomWord={addCustomWord}
+                    handleToggleRoutine={handleToggleRoutine}
+                    handleAddToRoutine={handleAddToRoutine}
+                    handleRemoveFromRoutine={handleRemoveFromRoutine}
+                    submitGuess={submitGuess}
+                />
             </div>
 
             {/* Results Modal */}
