@@ -37,10 +37,11 @@ export interface Player {
     status: 'waiting' | 'playing' | 'won' | 'lost';
     guesses?: string; // JSON string
     timeTaken?: number;
+    startTime?: number;
     endTime?: number;
+    finalScore?: number;
     history?: string; // JSON string
     stats?: string; // JSON string
-    firstGuessTime?: number;
 }
 
 export interface RoutineGame {
@@ -255,7 +256,8 @@ export function useRoom(roomId: string, username: string | null) {
                     };
                     delete updatedPlayers[key].endTime;
                     delete updatedPlayers[key].timeTaken;
-                    delete updatedPlayers[key].firstGuessTime;
+                    delete updatedPlayers[key].startTime;
+                    delete updatedPlayers[key].finalScore;
                 });
 
                 return {
@@ -317,10 +319,10 @@ export function useRoom(roomId: string, username: string | null) {
         };
 
         // First guess time
-        let firstGuessT = player.firstGuessTime;
-        if (newGuesses.length === 1 && !firstGuessT) {
-            firstGuessT = Date.now();
-            updateData.firstGuessTime = firstGuessT;
+        let playerStartTime = player.startTime;
+        if (newGuesses.length === 1 && !playerStartTime) {
+            playerStartTime = Date.now();
+            updateData.startTime = playerStartTime;
         }
 
         let gameCompleted = false;
@@ -329,25 +331,30 @@ export function useRoom(roomId: string, username: string | null) {
 
         if (guess === room.currentWord) {
             const endTime = Date.now();
-            const startTime = firstGuessT || room.startTime;
+            const startTime = playerStartTime || room.startTime;
             const timeTaken = (endTime - startTime) / 1000;
 
-            newScore += 1;
+            const attempts = newGuesses.length;
+            const calculatedScore = Math.max(0, 1000 - (attempts * 100) - Math.floor(timeTaken / 2));
+
+            newScore += calculatedScore;
             updateData.status = 'won';
             updateData.score = newScore;
             updateData.endTime = endTime;
             updateData.timeTaken = timeTaken;
+            updateData.finalScore = calculatedScore;
             gameCompleted = true;
             won = true;
             finalTime = timeTaken;
         } else if (newGuesses.length >= (room.settings.maxGuesses || 6)) {
             updateData.status = 'lost';
             const endTime = Date.now();
-            const startTime = firstGuessT || room.startTime;
+            const startTime = playerStartTime || room.startTime;
             const timeTaken = (endTime - startTime) / 1000;
 
             updateData.endTime = endTime;
             updateData.timeTaken = timeTaken;
+            updateData.finalScore = 0;
             gameCompleted = true;
             won = false;
             finalTime = timeTaken;
@@ -426,7 +433,8 @@ export function useRoom(roomId: string, username: string | null) {
             };
             delete updatedPlayers[key].endTime;
             delete updatedPlayers[key].timeTaken;
-            delete updatedPlayers[key].firstGuessTime;
+            delete updatedPlayers[key].startTime;
+            delete updatedPlayers[key].finalScore;
         });
 
         await update(ref(db, `rooms/${roomId}`), {

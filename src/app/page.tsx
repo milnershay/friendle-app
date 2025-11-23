@@ -69,12 +69,14 @@ export default function Home() {
       <div className="absolute top-4 right-4 z-50 flex gap-2">
         <button
           onClick={() => handleLanguageChange('en')}
+          aria-label="Switch to English"
           className={`px-3 py-1 rounded-full text-xs font-bold transition-all duration-300 border border-white/10 ${language === 'en' ? 'bg-white text-slate-950 shadow-[0_0_15px_rgba(255,255,255,0.3)]' : 'bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white'}`}
         >
           EN
         </button>
         <button
           onClick={() => handleLanguageChange('he')}
+          aria-label="Switch to Hebrew"
           className={`px-3 py-1 rounded-full text-xs font-bold transition-all duration-300 border border-white/10 ${language === 'he' ? 'bg-white text-slate-950 shadow-[0_0_15px_rgba(255,255,255,0.3)]' : 'bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white'}`}
         >
           HE
@@ -131,6 +133,7 @@ export default function Home() {
 
               <Button
                 onClick={handleUsernameSubmit}
+                aria-label="Submit username and continue"
                 className="w-full bg-white text-slate-950 hover:bg-slate-200 font-bold text-lg h-14 rounded-xl shadow-lg transition-all duration-300"
               >
                 {t.common.next} <ArrowRight className="w-5 h-5 ml-2 rtl:rotate-180" />
@@ -149,6 +152,7 @@ export default function Home() {
 
               <Button
                 onClick={handleCreateRoom}
+                aria-label="Create a new room"
                 className="relative w-full overflow-hidden group bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500 hover:from-blue-400 hover:via-indigo-400 hover:to-purple-400 text-white font-bold text-lg h-16 rounded-xl shadow-[0_8px_24px_rgba(99,102,246,0.25)] transition-all duration-300 hover:shadow-[0_12px_32px_rgba(99,102,246,0.4)] hover:scale-[1.02] border border-white/10"
               >
                 <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000 rtl:translate-x-[100%] rtl:group-hover:translate-x-[-100%]" />
@@ -167,6 +171,7 @@ export default function Home() {
 
               <Button
                 onClick={() => setStep(2)}
+                aria-label="Join an existing room"
                 className="w-full bg-white/10 hover:bg-white/20 border border-white/10 text-white font-bold text-lg h-16 rounded-xl transition-all duration-300 flex items-center justify-center gap-3"
               >
                 <LogIn className="w-6 h-6" /> {t.home.join}
@@ -174,6 +179,7 @@ export default function Home() {
 
               <button
                 onClick={() => setStep(0)}
+                aria-label="Go back to the previous step"
                 className="w-full text-slate-500 text-sm hover:text-white mt-4 transition-colors"
               >
                 {t.common.back}
@@ -184,10 +190,10 @@ export default function Home() {
           {/* Step 2: Join Room Code */}
           {step === 2 && (
             <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-              <div className="flex items-center gap-2 mb-2 text-slate-400 cursor-pointer hover:text-white transition-colors" onClick={() => setStep(1)}>
+              <button className="flex items-center gap-2 mb-2 text-slate-400 hover:text-white transition-colors" onClick={() => setStep(1)} aria-label="Go back to the previous step">
                 <ArrowLeft className="w-4 h-4 rtl:rotate-180" />
                 <span className="text-xs font-bold uppercase tracking-widest">{t.common.back}</span>
-              </div>
+              </button>
 
               <div>
                 <label htmlFor="room-code" className="block text-xs font-bold text-slate-400 mb-3 uppercase tracking-widest text-center">
@@ -207,6 +213,7 @@ export default function Home() {
 
               <Button
                 onClick={handleJoinSubmit}
+                aria-label="Join room with the entered code"
                 className="w-full bg-white text-slate-950 hover:bg-slate-200 font-bold text-lg h-14 rounded-xl shadow-lg transition-all duration-300"
               >
                 {t.home.join}

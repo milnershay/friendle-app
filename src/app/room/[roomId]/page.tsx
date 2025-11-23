@@ -113,7 +113,7 @@ export default function RoomPage() {
                     <button
                         onClick={handleLeaveRoom}
                         className="text-slate-400 hover:text-white transition-colors"
-                        title={t.room.leaveRoom}
+                        aria-label={t.room.leaveRoom}
                     >
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
@@ -125,12 +125,14 @@ export default function RoomPage() {
                 <div className="flex gap-1 bg-black/20 rounded-lg p-1">
                     <button
                         onClick={() => setActiveTab('game')}
+                        aria-pressed={activeTab === 'game'}
                         className={`px-4 py-1.5 rounded-md text-sm font-bold transition-all ${activeTab === 'game' ? 'bg-white/10 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'}`}
                     >
                         {t.room.game}
                     </button>
                     <button
                         onClick={() => setActiveTab('players')}
+                        aria-pressed={activeTab === 'players'}
                         className={`px-4 py-1.5 rounded-md text-sm font-bold transition-all ${activeTab === 'players' ? 'bg-white/10 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'}`}
                     >
                         {t.room.players}
@@ -156,6 +158,7 @@ export default function RoomPage() {
                         <button
                             onClick={skipWord}
                             className="flex-1 bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-400 font-bold py-2 px-3 rounded-lg transition-all active:scale-[0.98] text-sm border border-yellow-500/20"
+                            aria-label={t.room.skipWord}
                             title={t.room.skipWord}
                         >
                             {t.room.skipWord}
@@ -163,6 +166,7 @@ export default function RoomPage() {
                         <button
                             onClick={resetRound}
                             className="flex-1 bg-red-500/20 hover:bg-red-500/30 text-red-400 font-bold py-2 px-3 rounded-lg transition-all active:scale-[0.98] text-sm border border-red-500/20"
+                            aria-label={t.room.resetRound}
                             title={t.room.resetRound}
                         >
                             {t.room.resetRound}

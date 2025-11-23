@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { cleanupOldRooms, getRoomStats } from "@/lib/roomCleanup";
 import { useRouter } from "next/navigation";
 
 export default function AdminPage() {
@@ -73,9 +72,14 @@ export default function AdminPage() {
     const loadStats = async () => {
         setLoading(true);
         try {
-            const data = await getRoomStats();
-            setStats(data);
-            setResult("");
+            const response = await fetch('/api/admin/stats');
+            const data = await response.json();
+            if (response.ok) {
+                setStats(data);
+                setResult("");
+            } else {
+                throw new Error(data.error || 'Failed to load stats');
+            }
         } catch (error) {
             setResult(`Error loading stats: ${error}`);
         } finally {
@@ -87,10 +91,19 @@ export default function AdminPage() {
         setLoading(true);
         setResult("");
         try {
-            const { deleted, total } = await cleanupOldRooms(hours);
-            setResult(`Cleanup complete: Deleted ${deleted} out of ${total} rooms`);
-            // Reload stats after cleanup
-            await loadStats();
+            const response = await fetch('/api/admin/cleanup', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ hours }),
+            });
+            const data = await response.json();
+
+            if (response.ok) {
+                setResult(`Cleanup complete: Deleted ${data.deletedCount} out of ${data.totalRooms} rooms`);
+                await loadStats();
+            } else {
+                throw new Error(data.error || 'Cleanup failed');
+            }
         } catch (error) {
             setResult(`Error during cleanup: ${error}`);
         } finally {
