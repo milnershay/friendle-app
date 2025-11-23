@@ -111,6 +111,25 @@ export function useRoom(roomId: string, username: string | null) {
         setUserId(storedId);
     }, [roomId, username]);
 
+    // Join existing room helper
+    const joinRoom = useCallback(async () => {
+        if (!userId || !username) return;
+        try {
+            await update(ref(db, `rooms/${roomId}/players`), {
+                [userId]: {
+                    id: userId,
+                    username,
+                    score: 0,
+                    status: 'waiting',
+                    guesses: JSON.stringify([])
+                }
+            });
+        } catch (err) {
+            console.error("Error joining room:", err);
+            setError("Failed to join room");
+        }
+    }, [roomId, userId, username]);
+
     // Subscribe to Room Updates
     useEffect(() => {
         if (!userId || !username) return;
@@ -120,7 +139,13 @@ export function useRoom(roomId: string, username: string | null) {
         const unsubscribe = onValue(roomRef, (snapshot) => {
             setLoading(false);
             if (snapshot.exists()) {
-                setRoom(snapshot.val());
+                const data = snapshot.val();
+                setRoom(data);
+
+                // If I am not in the players list, join automatically
+                if (!data.players || !data.players[userId]) {
+                    joinRoom();
+                }
             } else {
                 // Room doesn't exist, create it
                 initializeRoom();
@@ -133,7 +158,7 @@ export function useRoom(roomId: string, username: string | null) {
 
         return () => unsubscribe();
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [roomId, userId, username]);
+    }, [roomId, userId, username, joinRoom]);
 
     // Join/Create Room Logic
     const initializeRoom = useCallback(async () => {
@@ -167,22 +192,14 @@ export function useRoom(roomId: string, username: string | null) {
             } else {
                 // Join existing room
                 if (!currentRoom.players || !currentRoom.players[userId]) {
-                    await update(ref(db, `rooms/${roomId}/players`), {
-                        [userId]: {
-                            id: userId,
-                            username,
-                            score: 0,
-                            status: 'waiting',
-                            guesses: JSON.stringify([])
-                        }
-                    });
+                    joinRoom();
                 }
             }
         } catch (err) {
             console.error("Error initializing room:", err);
             setError("Failed to join room");
         }
-    }, [roomId, userId, username]);
+    }, [roomId, userId, username, joinRoom]);
 
     // Game Actions
     const startGame = useCallback(async () => {
