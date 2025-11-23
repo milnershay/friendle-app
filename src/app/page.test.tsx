@@ -8,142 +8,130 @@ vi.mock('next/navigation', () => ({
     useRouter: vi.fn(),
 }));
 
-// Mock firebase
-vi.mock('@/lib/firebase', () => ({
-    db: {},
-}));
-
-vi.mock('firebase/database', () => ({
-    ref: vi.fn(),
-    set: vi.fn(),
-    get: vi.fn(),
-}));
-
-describe('Home Page', () => {
+describe('Home Page - New Flow', () => {
     const pushMock = vi.fn();
 
     beforeEach(() => {
         vi.clearAllMocks();
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (navigation.useRouter as any).mockReturnValue({
+        (navigation.useRouter as vi.Mock).mockReturnValue({
             push: pushMock,
         });
+        // Mock localStorage for language settings
+        Storage.prototype.getItem = vi.fn(() => 'en');
+        Storage.prototype.setItem = vi.fn();
     });
 
-    it('renders the home page correctly (step 0)', () => {
+    it('renders the initial action choice (step 0)', async () => {
         render(<Home />);
-
-        expect(screen.getByText(/Friendle/i)).toBeDefined();
-        expect(screen.getByPlaceholderText('Enter name')).toBeDefined();
-        // Create Room/Join Room should not be visible yet
-        expect(screen.queryByText('Create Room')).toBeNull();
+        expect(await screen.findByText('Create New Room')).toBeDefined();
+        expect(await screen.findByText('Join Existing Room')).toBeDefined();
+        expect(screen.queryByLabelText('Username')).toBeNull();
     });
 
-    it('allows entering username and proceeding to menu', () => {
+    it('navigates to create room flow (step 1)', async () => {
         render(<Home />);
-        const input = screen.getByPlaceholderText('Enter name');
-        fireEvent.change(input, { target: { value: 'TestUser' } });
-
-        const nextButton = screen.getByText('Next');
-        fireEvent.click(nextButton);
-
-        expect(screen.getByText('Create Room')).toBeDefined();
-        expect(screen.getByText('Join')).toBeDefined();
+        fireEvent.click(await screen.findByText('Create New Room'));
+        expect(await screen.findByLabelText('Username')).toBeDefined();
+        expect(await screen.findByText('Create Room')).toBeDefined();
     });
 
-    it('creates a room with valid username', async () => {
+    it('navigates to join room flow (step 2)', async () => {
         render(<Home />);
+        fireEvent.click(await screen.findByText('Join Existing Room'));
+        expect(await screen.findByLabelText('Room Code')).toBeDefined();
+        expect(await screen.findByText('Next')).toBeDefined();
+    });
 
-        // Step 0 -> 1
-        const usernameInput = screen.getByPlaceholderText('Enter name');
+    it('allows creating a room with a valid username', async () => {
+        render(<Home />);
+        fireEvent.click(await screen.findByText('Create New Room'));
+
+        const usernameInput = await screen.findByLabelText('Username');
         fireEvent.change(usernameInput, { target: { value: 'TestUser' } });
-        fireEvent.click(screen.getByText('Next'));
-
-        // Step 1 -> Create
-        const createButton = screen.getByText('Create Room');
-        fireEvent.click(createButton);
+        fireEvent.click(await screen.findByText('Create Room'));
 
         await waitFor(() => {
-            expect(pushMock).toHaveBeenCalledWith(expect.stringMatching(/\/room\/.*username=TestUser/));
+            expect(pushMock).toHaveBeenCalledWith(expect.stringMatching(/\/room\/[A-Z0-9]{6}\?username=TestUser/));
         });
     });
 
-    it('alerts on invalid username when trying to proceed', () => {
+    it('validates username on create room submission', async () => {
         const alertMock = vi.spyOn(window, 'alert').mockImplementation(() => {});
         render(<Home />);
-
-        const nextButton = screen.getByText('Next');
-        fireEvent.click(nextButton); // Empty username
-
-        expect(alertMock).toHaveBeenCalled();
-        expect(screen.queryByText('Create Room')).toBeNull(); // Should not advance
+        fireEvent.click(await screen.findByText('Create New Room'));
+        fireEvent.click(await screen.findByText('Create Room')); // Empty username
+        expect(alertMock).toHaveBeenCalledWith('Username must be between 2 and 10 characters.');
+        expect(pushMock).not.toHaveBeenCalled();
+        alertMock.mockRestore();
     });
 
-    it('joins a room with valid username and room code', async () => {
+    it('allows joining a room with valid code and username', async () => {
         render(<Home />);
+        fireEvent.click(await screen.findByText('Join Existing Room'));
 
-        // Step 0 -> 1
-        const usernameInput = screen.getByPlaceholderText('Enter name');
-        fireEvent.change(usernameInput, { target: { value: 'TestUser' } });
-        fireEvent.click(screen.getByText('Next'));
+        const roomInput = await screen.findByLabelText('Room Code');
+        fireEvent.change(roomInput, { target: { value: 'VALID6' } });
+        fireEvent.click(await screen.findByText('Next'));
 
-        // Step 1 -> 2
-        const joinMenuButton = screen.getByText('Join');
-        fireEvent.click(joinMenuButton);
-
-        // Step 2
-        expect(screen.getByPlaceholderText('CODE')).toBeDefined();
-
-        const roomInput = screen.getByPlaceholderText('CODE');
-        fireEvent.change(roomInput, { target: { value: 'ABCDEF' } });
-
-        // Click Join in Step 2
-        // Since "Join" text is on both buttons (menu and submit), we need to be specific or rely on visibility.
-        // React Testing Library will find the visible one usually, or all.
-        // In Step 2, Step 1 is hidden, so only one "Join" button should be visible/rendered.
-        const joinSubmitButton = screen.getByText('Join');
-        fireEvent.click(joinSubmitButton);
+        const usernameInput = await screen.findByLabelText('Username');
+        fireEvent.change(usernameInput, { target: { value: 'Joiner' } });
+        fireEvent.click(await screen.findByText('Join'));
 
         await waitFor(() => {
-            expect(pushMock).toHaveBeenCalledWith('/room/ABCDEF?username=TestUser');
+            expect(pushMock).toHaveBeenCalledWith('/room/VALID6?username=Joiner');
         });
     });
 
-    it('alerts on invalid room code', () => {
+    it('validates room code before asking for username', async () => {
         const alertMock = vi.spyOn(window, 'alert').mockImplementation(() => {});
         render(<Home />);
+        fireEvent.click(await screen.findByText('Join Existing Room'));
 
-        // Step 0 -> 1
-        const usernameInput = screen.getByPlaceholderText('Enter name');
-        fireEvent.change(usernameInput, { target: { value: 'TestUser' } });
-        fireEvent.click(screen.getByText('Next'));
+        const roomInput = await screen.findByLabelText('Room Code');
+        fireEvent.change(roomInput, { target: { value: 'INVALID' } }); // Too long
+        fireEvent.click(await screen.findByText('Next'));
 
-        // Step 1 -> 2
-        fireEvent.click(screen.getByText('Join'));
-
-        const roomInput = screen.getByPlaceholderText('CODE');
-        fireEvent.change(roomInput, { target: { value: '!!' } });
-
-        const joinButton = screen.getByText('Join');
-        fireEvent.click(joinButton);
-
-        expect(alertMock).toHaveBeenCalled();
+        expect(alertMock).toHaveBeenCalledWith('Room code must be 6 characters long.');
+        expect(screen.queryByLabelText('Username')).toBeNull();
+        alertMock.mockRestore();
     });
 
-    it('changes language to Hebrew', () => {
+    it('supports back button navigation', async () => {
         render(<Home />);
+        // Step 0 -> 1 (Create)
+        fireEvent.click(await screen.findByText('Create New Room'));
+        expect(await screen.findByLabelText('Username')).toBeDefined();
+        // Step 1 -> 0
+        fireEvent.click(await screen.findByText('Back'));
+        expect(await screen.findByText('Create New Room')).toBeDefined();
 
-        const heButton = screen.getByText('HE');
+        // Step 0 -> 2 (Join)
+        fireEvent.click(await screen.findByText('Join Existing Room'));
+        expect(await screen.findByLabelText('Room Code')).toBeDefined();
+        // Step 2 -> 3
+        fireEvent.change(await screen.findByLabelText('Room Code'), { target: { value: 'ABCDEF' } });
+        fireEvent.click(await screen.findByText('Next'));
+        expect(await screen.findByLabelText('Username')).toBeDefined();
+        // Step 3 -> 2
+        fireEvent.click(await screen.findByText('Back'));
+        expect(await screen.findByLabelText('Room Code')).toBeDefined();
+        // Step 2 -> 0
+        fireEvent.click(await screen.findByText('Back'));
+        expect(await screen.findByText('Create New Room')).toBeDefined();
+    });
+
+    it('changes language and maintains state', async () => {
+        render(<Home />);
+        const heButton = await screen.findByText('HE');
         fireEvent.click(heButton);
 
-        expect(screen.getByPlaceholderText('הזן שם')).toBeDefined();
-        expect(screen.getByText('הבא')).toBeDefined();
+        // Check if main buttons are translated
+        expect(await screen.findByText('צור חדר')).toBeDefined();
+        expect(await screen.findByText('הצטרף')).toBeDefined();
 
-        // Enter username to check next steps translations
-        const input = screen.getByPlaceholderText('הזן שם');
-        fireEvent.change(input, { target: { value: 'User' } });
-        fireEvent.click(screen.getByText('הבא'));
-
-        expect(screen.getByText('צור חדר')).toBeDefined();
+        // Navigate to create flow and check translation
+        fireEvent.click(await screen.findByText('צור חדר'));
+        expect(await screen.findByLabelText('שם משתמש')).toBeDefined();
+        expect(await screen.findByText('צור חדר')).toBeDefined();
     });
 });
