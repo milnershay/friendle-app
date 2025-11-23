@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { POST, GET, DELETE } from './route';
 import { NextRequest } from 'next/server';
+import { cookies } from 'next/headers';
 
 // Create a stateful mock for the cookie store
 const cookieStore = new Map<string, { name: string; value: string }>();
