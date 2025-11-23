@@ -86,7 +86,7 @@ export default function PlayerList({ room, userId, onLeaveRoom, onResetScores, i
                                     <div className="text-xs text-slate-400 mt-0.5">
                                         {player.status === 'waiting' && 'Waiting...'}
                                         {player.status === 'playing' && <span className="text-yellow-400">Playing • {parseGuesses(player.guesses).length}/{room.settings.maxGuesses || 6}</span>}
-                                        {player.status === 'won' && <span className="text-green-400">Solved • {player.timeTaken?.toFixed(1)}s</span>}
+                                        {player.status === 'won' && <span className="text-green-400">Solved in {player.timeTaken?.toFixed(1)}s (+{player.finalScore})</span>}
                                         {player.status === 'lost' && <span className="text-red-400">Failed</span>}
                                     </div>
                                 </div>

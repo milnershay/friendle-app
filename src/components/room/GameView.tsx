@@ -13,6 +13,13 @@ export default function GameView({ room, myPlayer, onGuess }: GameViewProps) {
 
     return (
         <div className="w-full max-w-lg flex flex-col items-center">
+            {myPlayer?.status === 'won' && (
+                <div className="mb-4 text-center glass p-4 rounded-xl border-white/10 animate-in fade-in duration-300">
+                    <p className="text-sm text-green-400">You solved it!</p>
+                    <p className="text-xs text-slate-300">Score: +{myPlayer.finalScore} | Time: {myPlayer.timeTaken?.toFixed(1)}s | Attempts: {parseGuesses(myPlayer.guesses).length}</p>
+                </div>
+            )}
+
             {room.gameState === 'finished' && (
                 <div className="mb-8 text-center glass p-6 rounded-2xl border-white/10 animate-in fade-in zoom-in duration-300">
                     <h2 className="text-3xl md:text-4xl font-black mb-2 text-white">{t.room.gameOver}</h2>
