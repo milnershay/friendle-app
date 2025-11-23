@@ -58,7 +58,7 @@ export default function PlayerList({ room, userId, onLeaveRoom, onResetScores, i
                     </span>
                     {isHost && playerList.some(p => p.score > 0) && (
                         <button
-                            onClick={onResetScores}
+                            onClick={() => window.confirm("Are you sure you want to reset all scores to zero?") && onResetScores()}
                             className="text-[10px] bg-red-500/20 text-red-400 hover:bg-red-500/30 px-2 py-1 rounded transition-colors"
                             title={t.room.reset}
                         >
@@ -80,10 +80,11 @@ export default function PlayerList({ room, userId, onLeaveRoom, onResetScores, i
                                 </div>
                                 <div className="flex-1 min-w-0">
                                     <div className="font-semibold text-sm flex items-center gap-2 text-white">
+                                        <span className={`w-2 h-2 rounded-full ${player.online ? 'bg-green-500' : 'bg-slate-600'}`}></span>
                                         <span className="truncate">{player.username}</span>
                                         {player.id === userId && <span className="text-xs bg-indigo-500/20 text-indigo-300 px-1.5 py-0.5 rounded font-medium">You</span>}
                                     </div>
-                                    <div className="text-xs text-slate-400 mt-0.5">
+                                    <div className="text-xs text-slate-400 mt-0.5 pl-4">
                                         {player.status === 'waiting' && 'Waiting...'}
                                         {player.status === 'playing' && <span className="text-yellow-400">Playing • {parseGuesses(player.guesses).length}/{room.settings.maxGuesses || 6}</span>}
                                         {player.status === 'won' && <span className="text-green-400">Solved in {player.timeTaken?.toFixed(1)}s (+{player.finalScore})</span>}

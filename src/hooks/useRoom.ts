@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
+import toast from "react-hot-toast";
 import { db } from "@/lib/firebase";
-import { ref, onValue, set, update, get, runTransaction } from "firebase/database";
+import { ref, onValue, set, update, get, runTransaction, onDisconnect } from "firebase/database";
 import { WORD_LISTS } from "@/lib/wordLists";
 
 // --- Types (Moved from page.tsx) ---
@@ -35,6 +36,7 @@ export interface Player {
     username: string;
     score: number;
     status: 'waiting' | 'playing' | 'won' | 'lost';
+    online?: boolean;
     guesses?: string; // JSON string
     timeTaken?: number;
     startTime?: number;
@@ -100,6 +102,8 @@ export function useRoom(roomId: string, username: string | null) {
     const [userId, setUserId] = useState<string>("");
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(true);
+    const [actionLoading, setActionLoading] = useState<string | null>(null);
+    const prevPlayersRef = useRef<Record<string, Player> | null>(null);
 
     // Initialize User ID
     useEffect(() => {
@@ -131,17 +135,53 @@ export function useRoom(roomId: string, username: string | null) {
         }
     }, [roomId, userId, username]);
 
-    // Subscribe to Room Updates
+    // Subscribe to Room Updates & Presence
     useEffect(() => {
         if (!userId || !username) return;
 
         const roomRef = ref(db, `rooms/${roomId}`);
+        const myPlayerRef = ref(db, `rooms/${roomId}/players/${userId}`);
+        const connectedRef = ref(db, '.info/connected');
+
+        onValue(connectedRef, (snap) => {
+            if (snap.val() === true) {
+                // We're connected. Set up our presence state.
+                const con = onDisconnect(myPlayerRef);
+                con.update({ online: false });
+                update(myPlayerRef, { online: true });
+            }
+        });
 
         const unsubscribe = onValue(roomRef, (snapshot) => {
             setLoading(false);
             if (snapshot.exists()) {
-                const data = snapshot.val();
+                const data = snapshot.val() as RoomData;
+
+                // Player join/leave notifications
+                if (prevPlayersRef.current && userId) {
+                    const prevPlayers = prevPlayersRef.current;
+                    const currentPlayers = data.players || {};
+                    const prevPlayerIds = Object.keys(prevPlayers);
+                    const currentPlayerIds = Object.keys(currentPlayers);
+
+                    // Player Joined
+                    currentPlayerIds.forEach(id => {
+                        if (!prevPlayerIds.includes(id) && id !== userId) {
+                            toast(`${currentPlayers[id].username} has joined the room.`);
+                        }
+                    });
+
+                    // Player Left
+                    prevPlayerIds.forEach(id => {
+                        if (!currentPlayerIds.includes(id) && id !== userId) {
+                            toast(`${prevPlayers[id].username} has left the room.`);
+                        }
+                    });
+                }
+
                 setRoom(data);
+                prevPlayersRef.current = data.players || null;
+
 
                 // If I am not in the players list, join automatically
                 if (!data.players || !data.players[userId]) {
@@ -205,9 +245,10 @@ export function useRoom(roomId: string, username: string | null) {
     // Game Actions
     const startGame = useCallback(async () => {
         if (!room) return;
-
+        setActionLoading('start');
         try {
             const roomRef = ref(db, `rooms/${roomId}`);
+            toast.success("Game started!");
             await runTransaction(roomRef, (currentRoom: RoomData | null) => {
                 if (!currentRoom) return;
 
@@ -279,6 +320,8 @@ export function useRoom(roomId: string, username: string | null) {
         } catch (err) {
             console.error("Failed to start game:", err);
             setError("Failed to start game");
+        } finally {
+            setActionLoading(null);
         }
     }, [room, roomId]);
 
@@ -420,12 +463,15 @@ export function useRoom(roomId: string, username: string | null) {
 
     const updateSettings = useCallback(async (newSettings: Partial<RoomSettings>) => {
         await update(ref(db, `rooms/${roomId}/settings`), newSettings);
+        toast.success("Settings updated!");
     }, [roomId]);
 
     const resetRound = useCallback(async () => {
         if (!room) return;
-        const updatedPlayers = { ...room.players };
-        Object.keys(updatedPlayers).forEach(key => {
+        setActionLoading('reset');
+        try {
+            const updatedPlayers = { ...room.players };
+            Object.keys(updatedPlayers).forEach(key => {
             updatedPlayers[key] = {
                 ...updatedPlayers[key],
                 status: 'waiting',
@@ -437,12 +483,18 @@ export function useRoom(roomId: string, username: string | null) {
             delete updatedPlayers[key].finalScore;
         });
 
-        await update(ref(db, `rooms/${roomId}`), {
-            gameState: 'waiting',
-            currentWord: "",
-            currentSuggester: null,
-            players: updatedPlayers
-        });
+            await update(ref(db, `rooms/${roomId}`), {
+                gameState: 'waiting',
+                currentWord: "",
+                currentSuggester: null,
+                players: updatedPlayers
+            });
+        } catch (err) {
+            console.error("Failed to reset round:", err);
+            setError("Failed to reset round");
+        } finally {
+            setActionLoading(null);
+        }
     }, [room, roomId]);
 
     const skipWord = useCallback(async () => {
@@ -477,6 +529,7 @@ export function useRoom(roomId: string, username: string | null) {
         userId,
         loading,
         error,
+        actionLoading,
         startGame,
         submitGuess,
         updateSettings,

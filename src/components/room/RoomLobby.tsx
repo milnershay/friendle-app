@@ -1,10 +1,13 @@
 import { useState } from "react";
+import toast from "react-hot-toast";
 import { RoomData, RoomSettings } from "@/hooks/useRoom";
 import { useTranslation } from "@/lib/i18n";
+import { Loader } from "lucide-react";
 
 interface RoomLobbyProps {
     room: RoomData;
     isHost: boolean;
+    loading: string | null;
     onStartGame: () => void;
     onUpdateSettings: (settings: Partial<RoomSettings>) => void;
     onAddCustomWord: (word: string) => void;
@@ -21,7 +24,8 @@ export default function RoomLobby({
     onAddCustomWord,
     onToggleRoutine,
     onAddToRoutine,
-    onRemoveFromRoutine
+    onRemoveFromRoutine,
+    loading
 }: RoomLobbyProps) {
     const t = useTranslation(room.settings.language || 'en');
     const [newWord, setNewWord] = useState("");
@@ -29,10 +33,27 @@ export default function RoomLobby({
     const [routineLength, setRoutineLength] = useState<4 | 5 | 6>(5);
 
     const handleAddWord = () => {
-        if (newWord.trim()) {
-            onAddCustomWord(newWord.trim());
-            setNewWord("");
+        const trimmedWord = newWord.trim().toUpperCase();
+        if (!trimmedWord) return;
+
+        if (trimmedWord.length !== room.settings.wordLength) {
+            toast.error(`Word must be ${room.settings.wordLength} letters long.`);
+            return;
         }
+
+        if (room.wordQueue?.some(item => item.word === trimmedWord)) {
+            toast.error("Word is already in the queue.");
+            return;
+        }
+
+        onAddCustomWord(trimmedWord);
+        setNewWord("");
+        toast.success(`"${trimmedWord}" added to the queue.`);
+    };
+
+    const handleCopyRoomCode = () => {
+        navigator.clipboard.writeText(room.id);
+        toast.success(t.room.codeCopied);
     };
 
     return (
@@ -46,17 +67,40 @@ export default function RoomLobby({
                 </h2>
                 <p className="text-slate-400 text-lg mb-8">{t.room.shareRoomCode}</p>
 
-                <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-4 inline-flex items-center gap-4">
+                <button
+                    onClick={handleCopyRoomCode}
+                    className="bg-slate-800/50 border border-slate-700 rounded-xl p-4 inline-flex items-center gap-4 group hover:bg-slate-800 transition-colors"
+                    title="Copy to clipboard"
+                >
                     <span className="text-slate-400 text-sm uppercase tracking-wider">Room Code</span>
-                    <span className="text-2xl font-mono font-bold text-white select-all">{room.id}</span>
-                </div>
+                    <span className="text-2xl font-mono font-bold text-white">{room.id}</span>
+                    <svg
+                        className="w-5 h-5 text-slate-500 group-hover:text-white transition-colors"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                    >
+                        <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
+                        />
+                    </svg>
+                </button>
             </div>
+
+            {!isHost && (
+                <div className="text-center mb-8">
+                    <p className="text-slate-400 text-lg">Waiting for the host to start the game...</p>
+                </div>
+            )}
 
             {isHost && (
                 <div className="bg-slate-800/40 border border-slate-700/50 rounded-2xl p-6 mb-8 backdrop-blur-sm">
                     <h3 className="font-bold text-lg text-white mb-6 flex items-center gap-2">
                         <span className="w-1 h-6 bg-indigo-500 rounded-full"></span>
-                        Game Settings
+                        Host Controls
                     </h3>
 
                     <div className="grid gap-6 md:grid-cols-2">
@@ -175,9 +219,11 @@ export default function RoomLobby({
 
             <button
                 onClick={onStartGame}
-                className="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-400 hover:to-emerald-500 text-white font-bold py-4 px-6 rounded-xl text-xl shadow-lg shadow-green-900/20 transition-all hover:scale-[1.02] active:scale-[0.98]"
+                disabled={!isHost || loading === 'start'}
+                className="w-full bg-gradient-to-r from-green-500 to-emerald-600 text-white font-bold py-4 px-6 rounded-xl text-xl shadow-lg shadow-green-900/20 transition-all hover:scale-[1.02] active:scale-[0.98] disabled:from-slate-600 disabled:to-slate-700 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center justify-center gap-2"
             >
-                {t.room.startGame}
+                {loading === 'start' && <Loader className="animate-spin" size={20} />}
+                {isHost ? t.room.startGame : 'Waiting for Host'}
             </button>
         </div>
     );
