@@ -240,6 +240,7 @@ export default function RoomPage() {
                     room={room}
                     onClose={() => setResultsDismissed(true)}
                     onStartGame={startGame}
+                    onResetRound={resetRound}
                 />
             )}
         </main>

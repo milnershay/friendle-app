@@ -5,9 +5,10 @@ interface ResultsViewProps {
     room: RoomData;
     onClose: () => void;
     onStartGame: () => void;
+    onResetRound?: () => void;
 }
 
-export default function ResultsView({ room, onClose, onStartGame }: ResultsViewProps) {
+export default function ResultsView({ room, onClose, onStartGame, onResetRound }: ResultsViewProps) {
     const t = useTranslation(room.settings.language || 'en');
     const playerList = Object.values(room.players || {});
 
@@ -110,10 +111,21 @@ export default function ResultsView({ room, onClose, onStartGame }: ResultsViewP
                         </div>
                     </div>
                 ) : (
-                    <div className="text-center">
+                    <div className="flex gap-2 justify-center">
+                        <button
+                            onClick={() => {
+                                onClose();
+                                if (onResetRound) {
+                                    setTimeout(() => onResetRound(), 300);
+                                }
+                            }}
+                            className="bg-green-600 hover:bg-green-500 text-white font-semibold py-2.5 px-6 rounded-lg transition-all"
+                        >
+                            {t.room.playAgain || 'Play Again'}
+                        </button>
                         <button
                             onClick={onClose}
-                            className="bg-slate-700 hover:bg-slate-600 text-white font-semibold py-3 px-8 rounded-lg transition-all"
+                            className="bg-slate-700 hover:bg-slate-600 text-white font-semibold py-2.5 px-6 rounded-lg transition-all"
                         >
                             Close
                         </button>
