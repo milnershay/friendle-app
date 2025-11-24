@@ -3,6 +3,8 @@ import { Analytics } from "@vercel/analytics/next";
 import { Inter } from "next/font/google";
 import { Toaster } from "react-hot-toast";
 import "./globals.css";
+import ConnectionStatus from "@/components/ConnectionStatus";
+import ErrorBoundary from "@/components/ErrorBoundary";
 import VersionDisplay from "@/components/ui/VersionDisplay";
 
 const inter = Inter({ subsets: ["latin"] });
@@ -53,7 +55,8 @@ export default function RootLayout({
             },
           }}
         />
-        {children}
+        <ConnectionStatus />
+        <ErrorBoundary>{children}</ErrorBoundary>
         <VersionDisplay />
         <Analytics />
       </body>
