@@ -11,10 +11,16 @@ test('game flow', async ({ page }) => {
 
     await page.getByRole('heading', { name: 'Friendle' }).waitFor({ state: 'visible', timeout: 15000 });
 
+    // Custom wait: Wait for the app to be out of the initial loading state.
+    // This is crucial for tests involving authentication or async data fetching on startup.
+    await page.waitForFunction(() => !document.body.getAttribute('data-loading'), { timeout: 15000 });
+
+    // Step 1: Click "Create Room" button to enter create flow
     const createRoomButton = page.getByRole('button', { name: /Create Room/i });
     await createRoomButton.waitFor({ state: 'visible', timeout: 10000 });
     await createRoomButton.click();
 
+    // Step 2: Fill in username
     const usernameInput = page.getByLabel('Username', { exact: false });
     await usernameInput.waitFor({ state: 'visible', timeout: 10000 });
     await usernameInput.fill('TestUser');

@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import toast from "react-hot-toast";
 import { db } from "@/lib/firebase";
 import { useConnectionStatus } from "./useConnectionStatus";
+import { useAuth } from "./useAuth";
+import { useUserStats } from "./useUserStats";
 import { ref, onValue, set, update, get, runTransaction, onDisconnect } from "firebase/database";
 import { WORD_LISTS } from "@/lib/wordLists";
 
@@ -100,23 +102,15 @@ const getCategoryKey = (lang: 'en' | 'he', length: number): keyof PlayerStats =>
 
 export function useRoom(roomId: string, username: string | null) {
     const { isOnline, isConnectedToFirebase } = useConnectionStatus();
+    const { user: authUser, loading: authLoading } = useAuth();
+    const { updateUserStats } = useUserStats();
+    const userId = authUser?.uid;
+
     const [room, setRoom] = useState<RoomData | null>(null);
-    const [userId, setUserId] = useState<string>("");
     const [error, setError] = useState("");
-    const [loading, setLoading] = useState(true);
+    const [roomLoading, setRoomLoading] = useState(true);
     const [actionLoading, setActionLoading] = useState<string | null>(null);
     const prevPlayersRef = useRef<Record<string, Player> | null>(null);
-
-    // Initialize User ID
-    useEffect(() => {
-        if (!username) return;
-        let storedId = localStorage.getItem(`friendle_uid_${roomId}`);
-        if (!storedId) {
-            storedId = Math.random().toString(36).substring(2, 15);
-            localStorage.setItem(`friendle_uid_${roomId}`, storedId);
-        }
-        setUserId(storedId);
-    }, [roomId, username]);
 
     // Join existing room helper
     const safeWrite = useCallback(async <T extends (...args: any[]) => Promise<any>>(action: T, ...args: Parameters<T>): Promise<ReturnType<T> | void> => {
@@ -169,7 +163,7 @@ export function useRoom(roomId: string, username: string | null) {
         });
 
         const unsubscribe = onValue(roomRef, (snapshot) => {
-            setLoading(false);
+            setRoomLoading(false);
             if (snapshot.exists()) {
                 const data = snapshot.val() as RoomData;
 
@@ -424,15 +418,13 @@ export function useRoom(roomId: string, username: string | null) {
 
         // Update Stats if completed
         if (gameCompleted) {
-            const history = parseHistory(player.history);
-            const stats = parseStats(player.stats);
-
             let gameLang: 'en' | 'he' = room.settings.language || 'en';
             let gameLength = room.settings.wordLength || 5;
 
-            // Routine adjustment for stats
+            // Routine adjustment for stats definition
             if (room.settings.useRoutine && room.settings.dailyRoutine && room.settings.dailyRoutine.length > 0) {
                 const routine = room.settings.dailyRoutine;
+                // The routineIndex is updated *for the next round*, so we look at the one that just finished.
                 const nextGameIndex = room.routineIndex ?? 1;
                 const actualIndex = (nextGameIndex - 1 + routine.length) % routine.length;
                 const currentGame = routine[actualIndex];
@@ -448,25 +440,9 @@ export function useRoom(roomId: string, username: string | null) {
                 timeTaken: finalTime,
                 won
             };
-            history.push(gameRecord);
 
-            const categoryKey = getCategoryKey(gameLang, gameLength);
-            const currentStats = stats[categoryKey] || { games: 0, avgGuesses: 0, avgTime: 0, wins: 0 };
-
-            const newGames = currentStats.games + 1;
-            const newWins = currentStats.wins + (won ? 1 : 0);
-            const newAvgGuesses = ((currentStats.avgGuesses * currentStats.games) + newGuesses.length) / newGames;
-            const newAvgTime = ((currentStats.avgTime * currentStats.games) + finalTime) / newGames;
-
-            stats[categoryKey] = {
-                games: newGames,
-                avgGuesses: newAvgGuesses,
-                avgTime: newAvgTime,
-                wins: newWins
-            };
-
-            updateData.history = JSON.stringify(history);
-            updateData.stats = JSON.stringify(stats);
+            // This now handles all persistent stat calculations and achievements
+            updateUserStats(gameRecord);
         }
 
         await safeWrite(async () => update(ref(db, `rooms/${roomId}/players/${userId}`), updateData));
@@ -476,7 +452,7 @@ export function useRoom(roomId: string, username: string | null) {
         if (gameCompleted) {
             checkGameOver();
         }
-    }, [room, roomId, userId, checkGameOver]);
+    }, [room, roomId, userId, checkGameOver, updateUserStats]);
 
     const updateSettings = useCallback(async (newSettings: Partial<RoomSettings>) => {
         const action = async () => {
@@ -552,7 +528,7 @@ export function useRoom(roomId: string, username: string | null) {
     return {
         room,
         userId,
-        loading,
+        loading: authLoading || roomLoading,
         error,
         actionLoading,
         startGame,

@@ -1,5 +1,6 @@
 import { initializeApp, getApps, getApp } from "firebase/app";
 import { getDatabase } from "firebase/database";
+import { getAuth } from "firebase/auth";
 
 // Firebase configuration from environment variables
 const firebaseConfig = {
@@ -21,4 +22,10 @@ const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
  */
 const db = getDatabase(app);
 
-export { db };
+/**
+ * The initialized Firebase Authentication instance.
+ * Use this for all authentication-related tasks.
+ */
+const auth = getAuth(app);
+
+export { db, auth };
