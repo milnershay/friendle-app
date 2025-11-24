@@ -1,3 +1,0 @@
-
-> friendle_app@0.1.0 firebase:emulators
-> firebase emulators:start --only auth,database
