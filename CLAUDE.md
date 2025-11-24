@@ -207,3 +207,204 @@ await cleanupOldRooms(24);
 ```
 
 Consider setting up a scheduled task (cron job, cloud function) to run cleanup regularly.
+
+## Working with Jules (AI Coding Agent)
+
+**Jules** is Google's AI coding agent that works asynchronously to complete development tasks. Use Jules to delegate complex, time-consuming work while you focus on other priorities.
+
+### When to Use Jules
+
+Use Jules for:
+- 🔧 **Complex refactoring** - Restructuring code, updating dependencies, improving architecture
+- 🧪 **Test implementation** - Writing unit tests, e2e tests, test infrastructure setup
+- 📚 **Documentation** - Writing/updating docs, adding JSDoc comments, creating guides
+- 🏗️ **Infrastructure tasks** - CI/CD setup, deployment configs, build optimizations
+- 🐛 **Bug fixes** - Investigating and fixing specific bugs with clear reproduction steps
+- ✨ **Feature implementation** - Well-defined features with clear requirements
+
+**Important:** Jules works best with **atomic, well-scoped tasks**. Break large work into smaller, independent tasks that can run in parallel.
+
+### Jules CLI Commands
+
+#### Creating a New Task
+
+```bash
+jules remote new --repo . --session "Your detailed task description here"
+```
+
+**Best practices for task descriptions:**
+- ✅ Be specific and detailed about what needs to be done
+- ✅ List acceptance criteria and success metrics
+- ✅ Include relevant file paths or areas of the codebase
+- ✅ Specify testing requirements
+- ✅ Mention any constraints or things to avoid
+- ❌ Don't be vague or open-ended
+- ❌ Don't combine multiple unrelated tasks
+
+**Example task for this project:**
+```bash
+jules remote new --repo . --session "Fix E2E tests with Firebase Emulators
+
+**Goal:** Make all 4 e2e tests pass reliably using Firebase Emulator Suite
+
+**Tasks:**
+1. Install Firebase Emulator Suite
+2. Create firebase.json configuration for emulators
+3. Update playwright.config.ts to start/stop emulators before/after tests
+4. Update .env.test to use emulator URLs (localhost:9000, etc.)
+5. Ensure all tests pass: npm run test:e2e
+
+**Success Criteria:**
+- All 4 e2e tests passing
+- Tests run in CI without Firebase credentials
+- Tests are fast and reliable
+- No external Firebase calls during testing
+"
+```
+
+#### Listing Sessions
+
+**Show all remote sessions:**
+```bash
+jules remote list --session
+```
+
+**Show connected repositories:**
+```bash
+jules remote list --repo
+```
+
+#### Checking Session Status
+
+**View session in Jules dashboard:**
+1. Run `jules` to open the interactive dashboard
+2. Browse sessions, view diffs, and review changes
+3. Or visit the session URL directly: `https://jules.google.com/session/{session_id}`
+
+**Check for PRs from Jules:**
+```bash
+gh pr list --author google-labs-jules[bot]
+```
+
+**Check for Jules branches:**
+```bash
+git fetch --all && git branch -r | grep jules
+```
+
+#### Retrieving Completed Work
+
+When Jules completes a task, it creates a PR on GitHub. Review and merge as normal:
+
+```bash
+# List Jules PRs
+gh pr list --author google-labs-jules[bot]
+
+# Review a specific PR
+gh pr view <pr_number>
+
+# Or pull changes directly from a session
+jules remote pull --session <session_id>
+```
+
+### Jules Workflow for This Project
+
+**1. Create Task:**
+```bash
+jules remote new --repo . --session "<detailed description>"
+```
+Note the session ID returned.
+
+**2. Monitor Progress:**
+Jules works asynchronously. Check `docs/jules-status.md` or run:
+```bash
+gh pr list --author google-labs-jules[bot]
+```
+
+**3. Review PR:**
+When Jules creates a PR:
+- Review the code changes
+- Check CI status (lint, test, build)
+- Test locally if needed
+- Request changes or approve
+
+**4. Merge:**
+```bash
+gh pr merge <pr_number> --squash
+```
+
+### Active Jules Tasks
+
+Track active Jules tasks in `docs/jules-status.md` or check session URLs:
+- https://jules.google.com/session/{session_id}
+
+### Parallel Task Execution
+
+For multiple independent tasks, create separate sessions:
+
+```bash
+# Task 1: Add tests
+jules remote new --repo . --session "Write unit tests for GameBoard component"
+
+# Task 2: Update docs (runs in parallel)
+jules remote new --repo . --session "Update architecture documentation"
+
+# Task 3: Fix bug (runs in parallel)
+jules remote new --repo . --session "Fix leaderboard sorting bug when scores are equal"
+```
+
+All three tasks will run simultaneously, each creating its own PR when complete.
+
+### Tips for Success
+
+1. **Be specific**: More detail = better results
+2. **One task = One concern**: Don't mix refactoring + new features
+3. **Include context**: Reference relevant files, patterns, or examples
+4. **Set clear goals**: Define what "done" looks like
+5. **Test requirements**: Always specify testing expectations
+6. **Atomic tasks**: Each task should be independently mergeable
+7. **Review thoroughly**: Jules is powerful but still needs human review
+
+### Example Tasks for Friendle
+
+Good task examples:
+
+```bash
+# ✅ Good: Specific, scoped, testable
+jules remote new --repo . --session "Add loading skeleton to RoomPage
+
+Show loading skeleton while room data is loading instead of blank screen.
+Use existing RoomSkeleton component.
+Test: Verify skeleton appears during loading state."
+
+# ✅ Good: Clear refactoring with constraints
+jules remote new --repo . --session "Extract player status logic to custom hook
+
+Move player status calculation from RoomPage to usePlayerStatus hook.
+Don't change any behavior, just extract and refactor.
+Ensure all tests still pass."
+
+# ❌ Bad: Too vague
+jules remote new --repo . --session "Improve the app"
+
+# ❌ Bad: Multiple unrelated tasks
+jules remote new --repo . --session "Add dark mode, fix bugs, and update dependencies"
+```
+
+### Troubleshooting
+
+**If Jules isn't creating PRs:**
+- Check session status at https://jules.google.com/session/{session_id}
+- Verify repo is properly connected: `jules remote list --repo`
+- Check for error messages in the session
+
+**If Jules PR has failing tests:**
+- Review the changes locally
+- Run tests: `npm run lint && npm run test && npm run build`
+- Comment on the PR with specific issues
+- Jules may create a follow-up commit to fix issues
+
+**If you need to stop a task:**
+- Sessions complete asynchronously - there's no "cancel" command
+- If a PR is created but not wanted, simply close it
+- Future: Jules may add session cancellation
+
