@@ -75,7 +75,17 @@ export default function RoomPage() {
     );
 
     if (loading || !room || profileLoading) return <RoomSkeleton />;
-    const myPlayer = room.players && room.players[userId];
+    if (!userId) {
+        return (
+            <div className="min-h-screen flex items-center justify-center p-4">
+                <div className="text-center max-w-md">
+                    <p className="text-red-400 mb-4">Authentication error: User ID not found</p>
+                    <button onClick={() => router.push("/")} className="bg-purple-600 hover:bg-purple-500 px-4 py-2 rounded-lg transition-colors">Go Home</button>
+                </div>
+            </div>
+        );
+    }
+    const myPlayer = room.players && userId ? room.players[userId] : undefined;
     const playerList = Object.values(room.players || {});
     const isHost = playerList[0]?.id === userId;
 

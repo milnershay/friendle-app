@@ -204,7 +204,7 @@ export function useRoom(roomId: string, username: string | null) {
         }, (err) => {
             console.error("Firebase error:", err);
             setError(err.message);
-            setLoading(false);
+            setRoomLoading(false);
         });
 
         return () => unsubscribe();
