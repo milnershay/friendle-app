@@ -2,8 +2,10 @@
 
 import { useState, useEffect } from "react";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
-import { Loader } from "lucide-react";
+import { Loader, User as UserIcon } from "lucide-react";
 import { useRoom } from "@/hooks/useRoom";
+import { useUserStats } from "@/hooks/useUserStats";
+import ProfileModal from "@/components/profile/ProfileModal";
 import RoomContent from "@/components/room/RoomContent";
 import GameView from "@/components/room/GameView";
 import ResultsView from "@/components/room/ResultsView";
@@ -31,6 +33,9 @@ export default function RoomPage() {
         addCustomWord,
         skipWord
     } = useRoom(roomId as string, username);
+
+    const { profile, loading: profileLoading, updateUsername } = useUserStats();
+    const [isProfileModalOpen, setProfileModalOpen] = useState(false);
 
     const [activeTab, setActiveTab] = useState<'game' | 'players'>('game');
     const [prevTab, setPrevTab] = useState<'game' | 'players'>('game');
@@ -69,14 +74,24 @@ export default function RoomPage() {
         </div>
     );
 
-    if (loading || !room) return <RoomSkeleton />;
-    const myPlayer = room.players && room.players[userId];
+    if (loading || !room || profileLoading) return <RoomSkeleton />;
+    if (!userId) {
+        return (
+            <div className="min-h-screen flex items-center justify-center p-4">
+                <div className="text-center max-w-md">
+                    <p className="text-red-400 mb-4">Authentication error: User ID not found</p>
+                    <button onClick={() => router.push("/")} className="bg-purple-600 hover:bg-purple-500 px-4 py-2 rounded-lg transition-colors">Go Home</button>
+                </div>
+            </div>
+        );
+    }
+    const myPlayer = room.players && userId ? room.players[userId] : undefined;
     const playerList = Object.values(room.players || {});
     const isHost = playerList[0]?.id === userId;
 
     const handleLeaveRoom = () => {
         if (window.confirm(t.room.confirmLeave)) {
-            localStorage.removeItem(`friendle_uid_${roomId}`);
+            // No longer using localStorage for UID
             router.push('/');
         }
     };
@@ -142,6 +157,13 @@ export default function RoomPage() {
                         {t.room.players}
                     </button>
                 </div>
+                <button
+                    onClick={() => setProfileModalOpen(true)}
+                    className="text-slate-400 hover:text-white transition-colors"
+                    title="View Profile"
+                >
+                    <UserIcon />
+                </button>
             </div>
 
             {/* Mobile Content Area */}
@@ -242,6 +264,15 @@ export default function RoomPage() {
                     onClose={() => setResultsDismissed(true)}
                     onStartGame={startGame}
                     onResetRound={resetRound}
+                />
+            )}
+
+            {/* Profile Modal */}
+            {isProfileModalOpen && profile && (
+                <ProfileModal
+                    profile={profile}
+                    updateUsername={updateUsername}
+                    onClose={() => setProfileModalOpen(false)}
                 />
             )}
         </main>
