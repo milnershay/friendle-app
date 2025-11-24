@@ -62,6 +62,12 @@ export const translations = {
             leaveRoom: 'Leave Room',
             confirmLeave: 'Are you sure you want to leave this room?',
             codeCopied: 'Room code copied to clipboard!',
+            shareResults: 'Share Results',
+            share: 'Share',
+            tweet: 'Tweet',
+            whatsapp: 'WhatsApp',
+            copyToClipboard: 'Copy to Clipboard',
+            copied: 'Copied!',
         },
         // Admin page
         admin: {
@@ -152,6 +158,12 @@ export const translations = {
             leaveRoom: 'עזוב חדר',
             confirmLeave: 'האם אתה בטוח שברצונך לעזוב את החדר?',
             codeCopied: 'קוד החדר הועתק!',
+            shareResults: 'שתף תוצאות',
+            share: 'שתף',
+            tweet: 'צייץ',
+            whatsapp: 'וואטסאפ',
+            copyToClipboard: 'העתק ללוח',
+            copied: 'הועתק!',
         },
         // Admin page
         admin: {

@@ -238,6 +238,7 @@ export default function RoomPage() {
             {showResults && (
                 <ResultsView
                     room={room}
+                    userId={userId}
                     onClose={() => setResultsDismissed(true)}
                     onStartGame={startGame}
                     onResetRound={resetRound}
