@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Analytics } from "@vercel/analytics/next";
 import { Inter } from "next/font/google";
 import { Toaster } from "react-hot-toast";
+import AuthWrapper from "./AuthWrapper";
 import "./globals.css";
 import ConnectionStatus from "@/components/ConnectionStatus";
 import ErrorBoundary from "@/components/ErrorBoundary";
@@ -46,19 +47,21 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
-        <Toaster
-          position="top-center"
-          toastOptions={{
-            style: {
-              background: '#334155',
-              color: '#fff',
-            },
-          }}
-        />
-        <ConnectionStatus />
-        <ErrorBoundary>{children}</ErrorBoundary>
-        <VersionDisplay />
-        <Analytics />
+        <AuthWrapper>
+          <Toaster
+            position="top-center"
+            toastOptions={{
+              style: {
+                background: '#334155',
+                color: '#fff',
+              },
+            }}
+          />
+          <ConnectionStatus />
+          <ErrorBoundary>{children}</ErrorBoundary>
+          <VersionDisplay />
+          <Analytics />
+        </AuthWrapper>
       </body>
     </html>
   );

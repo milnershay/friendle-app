@@ -89,6 +89,27 @@
           }
         }
       }
+    },
+    "users": {
+      "$uid": {
+        // Users can only read and write their own data
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid",
+
+        ".validate": "newData.hasChildren(['uid', 'username', 'createdAt', 'stats', 'gameHistory', 'achievements'])",
+
+        "username": {
+          ".validate": "newData.isString() && newData.val().length >= 3 && newData.val().length <= 15"
+        },
+        "createdAt": {
+          ".validate": "newData.isNumber()"
+        },
+        "stats": {
+            // Further validation can be added here for each stat if needed
+           ".validate": "newData.hasChildren(['totalGames', 'totalWins', 'totalLosses', 'avgGuesses', 'avgTime', 'currentStreak', 'maxStreak'])"
+        }
+        // gameHistory and achievements are less critical to validate deeply for now
+      }
     }
   }
 }
