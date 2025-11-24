@@ -11,7 +11,7 @@ test('game flow', async ({ page }) => {
 
     await page.getByRole('heading', { name: 'Friendle' }).waitFor({ state: 'visible', timeout: 15000 });
 
-    const createRoomButton = page.getByRole('button', { name: /Create New Room/i });
+    const createRoomButton = page.getByRole('button', { name: /Create Room/i });
     await createRoomButton.waitFor({ state: 'visible', timeout: 10000 });
     await createRoomButton.click();
 
