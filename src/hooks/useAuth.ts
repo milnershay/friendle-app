@@ -22,6 +22,14 @@ export const useAuth = (): AuthState => {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
+        // Check if Firebase auth is initialized
+        if (!auth) {
+            console.error("Firebase auth not initialized. Please check your environment variables.");
+            toast.error("Firebase configuration missing. Please set up your .env.local file.");
+            setLoading(false);
+            return;
+        }
+
         const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
             if (firebaseUser) {
                 // User is signed in
@@ -34,7 +42,7 @@ export const useAuth = (): AuthState => {
                     setUser(userCredential.user);
                 } catch (error) {
                     console.error("Error signing in anonymously:", error);
-                    toast.error("Failed to authenticate. Please try again later.");
+                    toast.error("Failed to authenticate. Please check your Firebase configuration.");
                     // Handle the error appropriately in a real app
                 } finally {
                     setLoading(false);

@@ -1,6 +1,8 @@
-import { initializeApp, getApps, getApp, FirebaseApp } from "firebase/app";
-import { getDatabase, Database } from "firebase/database";
-import { getAuth, Auth } from "firebase/auth";
+import { initializeApp, getApps, getApp } from "firebase/app";
+import { getDatabase } from "firebase/database";
+import { getAuth } from "firebase/auth";
+import type { Database } from "firebase/database";
+import type { Auth } from "firebase/auth";
 
 // Firebase configuration from environment variables
 const firebaseConfig = {
@@ -13,14 +15,15 @@ const firebaseConfig = {
     appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
-// Initialize Firebase only on client-side
-let app: FirebaseApp;
+// Check if we have the required config
+const hasFirebaseConfig = firebaseConfig.apiKey && firebaseConfig.projectId && firebaseConfig.databaseURL;
+
+// Initialize Firebase only if config exists and on client-side
 let db: Database;
 let auth: Auth;
 
-if (typeof window !== 'undefined') {
-    // Initialize Firebase
-    app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+if (typeof window !== 'undefined' && hasFirebaseConfig) {
+    const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 
     /**
      * The initialized Firebase Realtime Database instance.
