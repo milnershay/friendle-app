@@ -50,8 +50,8 @@ test.describe('Multiplayer Input', () => {
         await p1.getByRole('button', { name: 'Start Game' }).click();
 
         // Both should see game board
-        await expect(p1.getByTestId('game-board')).toBeVisible();
-        await expect(p2.getByTestId('game-board')).toBeVisible();
+        await expect(p1.getByTestId('game-board').first()).toBeVisible();
+        await expect(p2.getByTestId('game-board').first()).toBeVisible();
 
         // Player 2 tries to type via physical keyboard
         await p2.keyboard.type('A');

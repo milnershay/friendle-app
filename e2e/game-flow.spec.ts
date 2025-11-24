@@ -35,7 +35,7 @@ test('game flow', async ({ page }) => {
     await startButton.waitFor({ state: 'visible', timeout: 10000 });
     await startButton.click();
 
-    await expect(page.getByTestId('game-board')).toBeVisible({ timeout: 30000 });
+    await expect(page.getByTestId('game-board').first()).toBeVisible({ timeout: 30000 });
 
     await page.keyboard.type('HELLO');
 

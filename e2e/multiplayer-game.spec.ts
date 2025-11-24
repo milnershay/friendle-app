@@ -45,7 +45,7 @@ test.describe('Multiplayer Game Flow', () => {
             console.log('Room created with code:', roomCode);
 
             // Verify Player 1 sees themselves in the room
-            await expect(player1.getByText('Alice')).toBeVisible();
+            await expect(player1.getByText('Alice').first()).toBeVisible();
 
             // PLAYER 2: Join the same room
             await player2.goto('/', { waitUntil: 'networkidle' });
@@ -82,11 +82,11 @@ test.describe('Multiplayer Game Flow', () => {
             await player2.waitForURL(/\/room\/[A-Z0-9]+/, { timeout: 10000 });
 
             // Verify both players see each other
-            await expect(player2.getByText('Bob')).toBeVisible();
-            await expect(player2.getByText('Alice')).toBeVisible();
+            await expect(player2.getByText('Bob').first()).toBeVisible();
+            await expect(player2.getByText('Alice').first()).toBeVisible();
 
             // Player 1 should also see Player 2
-            await expect(player1.getByText('Bob')).toBeVisible();
+            await expect(player1.getByText('Bob').first()).toBeVisible();
 
             console.log('Both players in room');
 
@@ -96,8 +96,8 @@ test.describe('Multiplayer Game Flow', () => {
             await startButton.click();
 
             // Both players should see the game board
-            await expect(player1.getByTestId('game-board')).toBeVisible({ timeout: 10000 });
-            await expect(player2.getByTestId('game-board')).toBeVisible({ timeout: 10000 });
+            await expect(player1.getByTestId('game-board').first()).toBeVisible({ timeout: 10000 });
+            await expect(player2.getByTestId('game-board').first()).toBeVisible({ timeout: 10000 });
 
             console.log('Game started for both players');
 
@@ -175,8 +175,8 @@ test.describe('Multiplayer Game Flow', () => {
 
             // Verify both players see some game state update
             // Even if no one won, the game board should show the guesses
-            const p1BoardVisible = await player1.getByTestId('game-board').isVisible();
-            const p2BoardVisible = await player2.getByTestId('game-board').isVisible();
+            const p1BoardVisible = await player1.getByTestId('game-board').first().isVisible();
+            const p2BoardVisible = await player2.getByTestId('game-board').first().isVisible();
 
             expect(p1BoardVisible).toBeTruthy();
             expect(p2BoardVisible).toBeTruthy();
@@ -224,14 +224,14 @@ test.describe('Multiplayer Game Flow', () => {
             await player1.waitForURL(/\/room\/[A-Z0-9]+/, { timeout: 10000 });
 
             // Check initial score is 0
-            await expect(player1.getByText('TestPlayer')).toBeVisible();
+            await expect(player1.getByText('TestPlayer').first()).toBeVisible();
 
             // Start game
             const startButton = player1.getByRole('button', { name: 'Start Game' });
             await startButton.waitFor({ state: 'visible', timeout: 10000 });
             await startButton.click();
 
-            await expect(player1.getByTestId('game-board')).toBeVisible({ timeout: 10000 });
+            await expect(player1.getByTestId('game-board').first()).toBeVisible({ timeout: 10000 });
 
             // Make guesses - try to win
             const words = ['HELLO', 'WORLD', 'ABOUT', 'AFTER', 'COULD', 'FIRST'];
