@@ -14,6 +14,7 @@ import { db } from '@/lib/firebase';
 export function useConnectionStatus() {
   const [isOnline, setIsOnline] = useState(typeof navigator !== 'undefined' ? navigator.onLine : true);
   const [isConnectedToFirebase, setIsConnectedToFirebase] = useState(true);
+  const [hasConnectedOnce, setHasConnectedOnce] = useState(!db); // Skip waiting if no Firebase
 
   useEffect(() => {
     // Listen for browser online/offline events
@@ -26,7 +27,6 @@ export function useConnectionStatus() {
     // Monitor Firebase connection state only if db is available
     if (!db) {
       console.warn('Firebase database not initialized. Connection monitoring disabled.');
-      setIsConnectedToFirebase(true); // Assume connected if Firebase not initialized
       return () => {
         window.removeEventListener('online', handleOnline);
         window.removeEventListener('offline', handleOffline);
@@ -35,7 +35,13 @@ export function useConnectionStatus() {
 
     const connectedRef = ref(db, '.info/connected');
     const unsubscribe = onValue(connectedRef, (snap) => {
-      setIsConnectedToFirebase(snap.val() === true);
+      const connected = snap.val() === true;
+      setIsConnectedToFirebase(connected);
+
+      // Once we've connected successfully, track it
+      if (connected) {
+        setHasConnectedOnce(true);
+      }
     });
 
     // Cleanup listeners on component unmount
@@ -46,5 +52,9 @@ export function useConnectionStatus() {
     };
   }, []);
 
-  return { isOnline, isConnectedToFirebase };
+  // Only report as offline after we've connected at least once
+  // This prevents the yellow bar from showing during initial connection
+  const isEffectivelyConnected = hasConnectedOnce ? (isOnline && isConnectedToFirebase) : true;
+
+  return { isOnline, isConnectedToFirebase: isEffectivelyConnected };
 }

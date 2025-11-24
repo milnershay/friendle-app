@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import toast from "react-hot-toast";
 import { db } from "@/lib/firebase";
-import { ref, set, get, update, serverTimestamp } from "firebase/database";
+import { ref, set, get, update } from "firebase/database";
 import { useAuth } from "./useAuth";
 import type { GameHistory } from "./useRoom"; // Using 'type' for type-only import
 
@@ -20,6 +20,13 @@ export interface UserStats {
     maxStreak: number;
 }
 
+export interface RoomHistoryEntry {
+    roomId: string;
+    roomName?: string;
+    lastJoined: number;
+    playerCount?: number;
+}
+
 export interface UserProfile {
     uid: string;
     username: string;
@@ -27,6 +34,7 @@ export interface UserProfile {
     stats: UserStats;
     gameHistory: GameHistory[]; // last 50
     achievements: string[];
+    roomHistory?: RoomHistoryEntry[]; // last 10 rooms
 }
 
 export interface UseUserStatsReturn {
@@ -35,6 +43,7 @@ export interface UseUserStatsReturn {
     error: string | null;
     updateUserStats: (gameResult: GameHistory) => Promise<void>;
     updateUsername: (newUsername: string) => Promise<void>;
+    addRoomToHistory: (roomEntry: RoomHistoryEntry) => Promise<void>;
 }
 
 /**
@@ -214,5 +223,35 @@ export const useUserStats = (): UseUserStatsReturn => {
         }
     }, [uid, profile]);
 
-    return { profile, loading, error, updateUserStats, updateUsername };
+    // Function to add a room to history
+    const addRoomToHistory = useCallback(async (roomEntry: RoomHistoryEntry) => {
+        if (!uid || !profile) return;
+
+        if (!db) {
+            console.error('Firebase database not initialized. Cannot update room history.');
+            return;
+        }
+
+        const userRef = ref(db, `users/${uid}`);
+        try {
+            const currentHistory = profile.roomHistory || [];
+
+            // Remove existing entry for this room if it exists
+            const filteredHistory = currentHistory.filter(entry => entry.roomId !== roomEntry.roomId);
+
+            // Add new entry at the beginning
+            const updatedHistory = [roomEntry, ...filteredHistory];
+
+            // Keep only last 10 rooms
+            const trimmedHistory = updatedHistory.slice(0, 10);
+
+            await update(userRef, { roomHistory: trimmedHistory });
+            setProfile(prev => prev ? { ...prev, roomHistory: trimmedHistory } : null);
+        } catch (err) {
+            console.error("Error updating room history:", err);
+            // Silent fail - don't show error to user for this non-critical feature
+        }
+    }, [uid, profile]);
+
+    return { profile, loading, error, updateUserStats, updateUsername, addRoomToHistory };
 };

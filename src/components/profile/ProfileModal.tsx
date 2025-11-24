@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { X, Edit, Save, Loader } from "lucide-react";
-import { UserProfile, useUserStats } from "@/hooks/useUserStats";
+import { UserProfile } from "@/hooks/useUserStats";
 import StatsDisplay from "./StatsDisplay";
 import AchievementsList from "./AchievementsList";
 

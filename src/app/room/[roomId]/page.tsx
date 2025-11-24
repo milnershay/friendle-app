@@ -7,7 +7,6 @@ import { useRoom } from "@/hooks/useRoom";
 import { useUserStats } from "@/hooks/useUserStats";
 import ProfileModal from "@/components/profile/ProfileModal";
 import RoomContent from "@/components/room/RoomContent";
-import GameView from "@/components/room/GameView";
 import ResultsView from "@/components/room/ResultsView";
 import PlayerList from "@/components/room/PlayerList";
 import RoomSkeleton from "@/components/room/RoomSkeleton";
@@ -31,10 +30,11 @@ export default function RoomPage() {
         resetRound,
         clearScores,
         addCustomWord,
-        skipWord
+        skipWord,
+        leaveRoom
     } = useRoom(roomId as string, username);
 
-    const { profile, loading: profileLoading, updateUsername } = useUserStats();
+    const { profile, loading: profileLoading, updateUsername, addRoomToHistory } = useUserStats();
     const [isProfileModalOpen, setProfileModalOpen] = useState(false);
 
     const [activeTab, setActiveTab] = useState<'game' | 'players'>('game');
@@ -51,10 +51,22 @@ export default function RoomPage() {
     // Reset dismissed state when game state changes to playing or waiting
     useEffect(() => {
         if (room?.gameState === 'waiting' || room?.gameState === 'playing') {
-            // eslint-disable-next-line react-hooks/set-state-in-effect
             setResultsDismissed(false);
         }
     }, [room?.gameState]);
+
+    // Add room to user's history when they join
+    useEffect(() => {
+        if (room && roomId && addRoomToHistory) {
+            const playerCount = room.players ? Object.keys(room.players).length : 0;
+            addRoomToHistory({
+                roomId: roomId as string,
+                lastJoined: Date.now(),
+                playerCount
+            });
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [room?.id, roomId]);
 
     const showResults = room?.gameState === 'finished' && !resultsDismissed;
 
@@ -89,9 +101,10 @@ export default function RoomPage() {
     const playerList = Object.values(room.players || {});
     const isHost = playerList[0]?.id === userId;
 
-    const handleLeaveRoom = () => {
+    const handleLeaveRoom = async () => {
         if (window.confirm(t.room.confirmLeave)) {
-            // No longer using localStorage for UID
+            // Remove player from room and cleanup if empty
+            await leaveRoom();
             router.push('/');
         }
     };

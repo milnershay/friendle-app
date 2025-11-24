@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { initializeApp, getApps } from 'firebase-admin/app';
 import { getDatabase } from 'firebase-admin/database';
 import { verifyAdmin } from '@/lib/admin-auth';
@@ -10,7 +10,7 @@ if (getApps().length === 0) {
   });
 }
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   const isAdmin = await verifyAdmin();
   if (!isAdmin) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

@@ -4,7 +4,7 @@ import { db } from "@/lib/firebase";
 import { useConnectionStatus } from "./useConnectionStatus";
 import { useAuth } from "./useAuth";
 import { useUserStats } from "./useUserStats";
-import { ref, onValue, set, update, get, runTransaction, onDisconnect } from "firebase/database";
+import { ref, onValue, set, update, get, remove, runTransaction, onDisconnect } from "firebase/database";
 import { WORD_LISTS } from "@/lib/wordLists";
 
 // --- Types (Moved from page.tsx) ---
@@ -92,10 +92,6 @@ export const parseHistory = (history?: string): GameHistory[] => {
 export const parseStats = (stats?: string): PlayerStats => {
     if (!stats) return {};
     try { return JSON.parse(stats); } catch { return {}; }
-};
-
-const getCategoryKey = (lang: 'en' | 'he', length: number): keyof PlayerStats => {
-    return `${lang}-${length}` as keyof PlayerStats;
 };
 
 // --- Hook ---
@@ -453,6 +449,7 @@ export function useRoom(roomId: string, username: string | null) {
         if (gameCompleted) {
             checkGameOver();
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [room, roomId, userId, checkGameOver, updateUserStats]);
 
     const updateSettings = useCallback(async (newSettings: Partial<RoomSettings>) => {
@@ -526,6 +523,30 @@ export function useRoom(roomId: string, username: string | null) {
         await safeWrite(action);
     }, [room, roomId, username, safeWrite]);
 
+    const leaveRoom = useCallback(async () => {
+        if (!userId || !room) return;
+
+        const action = async () => {
+            // Remove player from room
+            await remove(ref(db, `rooms/${roomId}/players/${userId}`));
+
+            // Check if room is now empty
+            const roomSnapshot = await get(ref(db, `rooms/${roomId}/players`));
+            const remainingPlayers = roomSnapshot.val();
+
+            // If no players left, delete the entire room
+            if (!remainingPlayers || Object.keys(remainingPlayers).length === 0) {
+                await remove(ref(db, `rooms/${roomId}`));
+                console.log(`Room ${roomId} deleted - no players remaining`);
+            }
+        };
+
+        await safeWrite(action).catch((err) => {
+            console.error("Failed to leave room:", err);
+            toast.error("Failed to leave room. Please try again.");
+        });
+    }, [userId, room, roomId, safeWrite]);
+
     return {
         room,
         userId,
@@ -538,6 +559,7 @@ export function useRoom(roomId: string, username: string | null) {
         resetRound,
         skipWord,
         clearScores,
-        addCustomWord
+        addCustomWord,
+        leaveRoom
     };
 }
