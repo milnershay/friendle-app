@@ -5,6 +5,7 @@ dotenv.config({ path: '.env.test' });
 
 export default defineConfig({
     testDir: './e2e',
+    timeout: 10 * 60 * 1000, // 10 minutes
     fullyParallel: true,
     forbidOnly: !!process.env.CI,
     retries: process.env.CI ? 2 : 0,
@@ -20,10 +21,17 @@ export default defineConfig({
             use: { ...devices['Desktop Chrome'] },
         },
     ],
-    webServer: {
-        command: 'npm run build && npm run start',
-        url: 'http://localhost:3000',
-        reuseExistingServer: !process.env.CI,
-        timeout: 120 * 1000, // Increase timeout for build process
-    },
+    webServer: [
+        {
+            command: 'npm run dev',
+            url: 'http://localhost:3000',
+            reuseExistingServer: !process.env.CI,
+            timeout: 120 * 1000,
+        },
+        {
+            command: 'firebase emulators:start --only auth,database',
+            url: 'http://localhost:9099',
+            reuseExistingServer: !process.env.CI,
+        },
+    ]
 });
