@@ -113,6 +113,17 @@ src/
 
 Contributions are welcome! Please feel free to submit a Pull Request.
 
+## Pull Request Process
+
+All PRs must pass the following checks before merging:
+- ✅ Lint (ESLint)
+- ✅ Audit (npm audit for security vulnerabilities)
+- ✅ Unit Tests (81 tests)
+- ✅ Build (Next.js production build)
+- ✅ E2E Tests (4 Playwright tests)
+
+Branch protection is enabled on `main` - direct pushes are not allowed.
+
 ## License
 
 This project is licensed under the MIT License.
