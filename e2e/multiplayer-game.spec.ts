@@ -22,11 +22,18 @@ test.describe('Multiplayer Game Flow', () => {
             // Wait for React hydration
             await player1.getByRole('heading', { name: 'Friendle' }).waitFor({ state: 'visible', timeout: 15000 });
 
+            // Step 1: Click "Create Room" button to enter create flow
+            const createRoomButton = player1.getByRole('button', { name: /Create Room/i });
+            await createRoomButton.waitFor({ state: 'visible', timeout: 10000 });
+            await createRoomButton.click();
+
+            // Step 2: Fill in username
             const p1UsernameInput = player1.getByLabel('Username', { exact: false });
             await p1UsernameInput.waitFor({ state: 'visible', timeout: 10000 });
             await p1UsernameInput.fill('Alice');
 
-            const createButton = player1.getByRole('button', { name: 'Create New Room' });
+            // Step 3: Click "Create Room" submit button
+            const createButton = player1.getByRole('button', { name: 'Create Room' });
             await createButton.click();
 
             // Wait for room page and extract room code
@@ -48,15 +55,26 @@ test.describe('Multiplayer Game Flow', () => {
             // Wait for React hydration
             await player2.getByRole('heading', { name: 'Friendle' }).waitFor({ state: 'visible', timeout: 15000 });
 
+            // Step 1: Click "Join" button to enter join flow
+            const joinActionButton = player2.getByRole('button', { name: 'Join' });
+            await joinActionButton.waitFor({ state: 'visible', timeout: 10000 });
+            await joinActionButton.click();
+
+            // Step 2: Fill room code
+            const roomCodeInput = player2.getByLabel(/room code/i);
+            await roomCodeInput.waitFor({ state: 'visible', timeout: 10000 });
+            await roomCodeInput.fill(roomCode!);
+
+            // Step 3: Click "Next" to proceed to username step
+            const nextButton = player2.getByRole('button', { name: 'Next' });
+            await nextButton.click();
+
+            // Step 4: Fill in username
             const p2UsernameInput = player2.getByLabel('Username', { exact: false });
             await p2UsernameInput.waitFor({ state: 'visible', timeout: 10000 });
             await p2UsernameInput.fill('Bob');
 
-            // Fill room code - find by label
-            const roomCodeInput = player2.getByLabel(/room code/i);
-            await roomCodeInput.fill(roomCode!);
-
-            // Click join button
+            // Step 5: Click "Join" submit button
             const joinButton = player2.getByRole('button', { name: 'Join' });
             await joinButton.click();
 
@@ -189,11 +207,18 @@ test.describe('Multiplayer Game Flow', () => {
             // Wait for React hydration
             await player1.getByRole('heading', { name: 'Friendle' }).waitFor({ state: 'visible', timeout: 15000 });
 
+            // Step 1: Click "Create Room" button to enter create flow
+            const createRoomButton = player1.getByRole('button', { name: /Create Room/i });
+            await createRoomButton.waitFor({ state: 'visible', timeout: 10000 });
+            await createRoomButton.click();
+
+            // Step 2: Fill in username
             const usernameInput = player1.getByLabel('Username', { exact: false });
             await usernameInput.waitFor({ state: 'visible', timeout: 10000 });
             await usernameInput.fill('TestPlayer');
 
-            const createButton = player1.getByRole('button', { name: 'Create New Room' });
+            // Step 3: Click "Create Room" submit button
+            const createButton = player1.getByRole('button', { name: 'Create Room' });
             await createButton.click();
 
             await player1.waitForURL(/\/room\/[A-Z0-9]+/, { timeout: 10000 });

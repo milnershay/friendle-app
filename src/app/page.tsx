@@ -12,7 +12,7 @@ export default function Home() {
   const router = useRouter()
   const [username, setUsername] = useState("")
   const [roomCode, setRoomCode] = useState("")
-  const [step, setStep] = useState(0) // 0: Username, 1: Menu, 2: Join
+  const [step, setStep] = useState(0) // 0: Choose Action, 1: Create Room (enter username), 2: Join Room (enter room code), 3: Join Room (enter username)
   const [language, setLanguage] = useState<Language>('en')
   const t = useTranslation(language)
 
@@ -26,16 +26,13 @@ export default function Home() {
     setStoredLanguage(newLang);
   };
 
-  const handleUsernameSubmit = () => {
+  const handleCreateRoom = () => {
     const sanitizedUsername = sanitizeText(username)
     const usernameValidation = validateUsername(sanitizedUsername)
     if (!usernameValidation.valid) {
       return alert(usernameValidation.error)
     }
-    setStep(1)
-  }
 
-  const handleCreateRoom = () => {
     const rateLimitKey = getRateLimitKey('create_room')
     const rateLimit = checkRateLimit(rateLimitKey, 5, 60000)
     if (!rateLimit.allowed) {
@@ -43,17 +40,32 @@ export default function Home() {
     }
 
     const newRoomId = Math.random().toString(36).substring(2, 8).toUpperCase()
-    router.push(`/room/${newRoomId}?username=${encodeURIComponent(sanitizeText(username))}`)
+    router.push(`/room/${newRoomId}?username=${encodeURIComponent(sanitizedUsername)}`)
+  }
+
+  const handleRoomCodeSubmit = () => {
+    const sanitizedRoomId = sanitizeText(roomCode)
+    const roomValidation = validateRoomCode(sanitizedRoomId)
+    if (!roomValidation.valid) {
+      return alert(roomValidation.error)
+    }
+    setStep(3)
   }
 
   const handleJoinSubmit = () => {
+    const sanitizedUsername = sanitizeText(username)
+    const usernameValidation = validateUsername(sanitizedUsername)
+    if (!usernameValidation.valid) {
+      return alert(usernameValidation.error)
+    }
+
     const sanitizedRoomId = sanitizeText(roomCode)
     const roomValidation = validateRoomCode(sanitizedRoomId)
     if (!roomValidation.valid) {
       return alert(roomValidation.error)
     }
 
-    router.push(`/room/${sanitizedRoomId.toUpperCase()}?username=${encodeURIComponent(sanitizeText(username))}`)
+    router.push(`/room/${sanitizedRoomId.toUpperCase()}?username=${encodeURIComponent(sanitizedUsername)}`)
   }
 
   const handleKeyDown = (e: React.KeyboardEvent, action: () => void) => {
@@ -104,51 +116,11 @@ export default function Home() {
         {/* Card */}
         <div className="bg-white/5 backdrop-blur-3xl border border-white/10 rounded-[2rem] p-8 shadow-[0_8px_32px_rgba(0,0,0,0.3),0_0_0_1px_rgba(255,255,255,0.05)_inset]">
 
-          {/* Step 0: Username */}
+          {/* Step 0: Choose Action (Create or Join) */}
           {step === 0 && (
-            <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-              <div className="flex items-center justify-center mb-2">
-                <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-[0_8px_16px_rgba(59,130,246,0.3)]">
-                   <Users className="h-6 w-6 text-white" />
-                </div>
-              </div>
-
-              <div>
-                <label htmlFor="username" className="block text-xs font-bold text-slate-400 mb-3 uppercase tracking-widest text-center">
-                  {t.home.username}
-                </label>
-                <Input
-                  id="username"
-                  type="text"
-                  placeholder={t.home.usernamePlaceholder}
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  onKeyDown={(e) => handleKeyDown(e, handleUsernameSubmit)}
-                  className="w-full bg-black/20 backdrop-blur-md border-transparent focus:border-white/20 text-white placeholder:text-slate-600 h-16 rounded-xl px-6 text-center text-xl transition-all duration-300 shadow-[inset_0_2px_4px_rgba(0,0,0,0.3)]"
-                  autoFocus
-                />
-              </div>
-
-              <Button
-                onClick={handleUsernameSubmit}
-                className="w-full bg-white text-slate-950 hover:bg-slate-200 font-bold text-lg h-14 rounded-xl shadow-lg transition-all duration-300"
-              >
-                {t.common.next} <ArrowRight className="w-5 h-5 ml-2 rtl:rotate-180" />
-              </Button>
-            </div>
-          )}
-
-          {/* Step 1: Choice (Create or Join) */}
-          {step === 1 && (
             <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
-              <div className="text-center mb-6">
-                <p className="text-white text-lg font-medium">
-                  {t.home.playerTitle}: <span className="font-bold text-blue-400">{username}</span>
-                </p>
-              </div>
-
               <Button
-                onClick={handleCreateRoom}
+                onClick={() => setStep(1)}
                 className="relative w-full overflow-hidden group bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500 hover:from-blue-400 hover:via-indigo-400 hover:to-purple-400 text-white font-bold text-lg h-16 rounded-xl shadow-[0_8px_24px_rgba(99,102,246,0.25)] transition-all duration-300 hover:shadow-[0_12px_32px_rgba(99,102,246,0.4)] hover:scale-[1.02] border border-white/10"
               >
                 <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000 rtl:translate-x-[100%] rtl:group-hover:translate-x-[-100%]" />
@@ -171,24 +143,52 @@ export default function Home() {
               >
                 <LogIn className="w-6 h-6" /> {t.home.join}
               </Button>
-
-              <button
-                onClick={() => setStep(0)}
-                className="w-full text-slate-500 text-sm hover:text-white mt-4 transition-colors"
-              >
-                {t.common.back}
-              </button>
             </div>
           )}
 
-          {/* Step 2: Join Room Code */}
-          {step === 2 && (
+          {/* Step 1: Create Room - Enter Username */}
+          {step === 1 && (
             <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-              <div className="flex items-center gap-2 mb-2 text-slate-400 cursor-pointer hover:text-white transition-colors" onClick={() => setStep(1)}>
+              <button onClick={() => setStep(0)} className="flex items-center gap-2 mb-2 text-slate-400 cursor-pointer hover:text-white transition-colors">
                 <ArrowLeft className="w-4 h-4 rtl:rotate-180" />
                 <span className="text-xs font-bold uppercase tracking-widest">{t.common.back}</span>
+              </button>
+              <div className="flex items-center justify-center mb-2">
+                <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-[0_8px_16px_rgba(59,130,246,0.3)]">
+                  <Users className="h-6 w-6 text-white" />
+                </div>
               </div>
+              <div>
+                <label htmlFor="username" className="block text-xs font-bold text-slate-400 mb-3 uppercase tracking-widest text-center">
+                  {t.home.username}
+                </label>
+                <Input
+                  id="username"
+                  type="text"
+                  placeholder={t.home.usernamePlaceholder}
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  onKeyDown={(e) => handleKeyDown(e, handleCreateRoom)}
+                  className="w-full bg-black/20 backdrop-blur-md border-transparent focus:border-white/20 text-white placeholder:text-slate-600 h-16 rounded-xl px-6 text-center text-xl transition-all duration-300 shadow-[inset_0_2px_4px_rgba(0,0,0,0.3)]"
+                  autoFocus
+                />
+              </div>
+              <Button
+                onClick={handleCreateRoom}
+                className="w-full bg-white text-slate-950 hover:bg-slate-200 font-bold text-lg h-14 rounded-xl shadow-lg transition-all duration-300"
+              >
+                {t.home.createRoom} <ArrowRight className="w-5 h-5 ml-2 rtl:rotate-180" />
+              </Button>
+            </div>
+          )}
 
+          {/* Step 2: Join Room - Enter Room Code */}
+          {step === 2 && (
+            <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <button onClick={() => setStep(0)} className="flex items-center gap-2 mb-2 text-slate-400 cursor-pointer hover:text-white transition-colors">
+                <ArrowLeft className="w-4 h-4 rtl:rotate-180" />
+                <span className="text-xs font-bold uppercase tracking-widest">{t.common.back}</span>
+              </button>
               <div>
                 <label htmlFor="room-code" className="block text-xs font-bold text-slate-400 mb-3 uppercase tracking-widest text-center">
                   {t.home.roomCode}
@@ -199,12 +199,47 @@ export default function Home() {
                   placeholder={t.home.roomCodePlaceholder}
                   value={roomCode}
                   onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
-                  onKeyDown={(e) => handleKeyDown(e, handleJoinSubmit)}
+                  onKeyDown={(e) => handleKeyDown(e, handleRoomCodeSubmit)}
                   className="w-full bg-black/20 backdrop-blur-md border-transparent focus:border-white/20 text-white placeholder:text-slate-600 h-16 rounded-xl px-6 text-2xl font-mono tracking-[0.2em] text-center uppercase shadow-[inset_0_2px_4px_rgba(0,0,0,0.3)]"
                   autoFocus
                 />
               </div>
+              <Button
+                onClick={handleRoomCodeSubmit}
+                className="w-full bg-white text-slate-950 hover:bg-slate-200 font-bold text-lg h-14 rounded-xl shadow-lg transition-all duration-300"
+              >
+                {t.common.next} <ArrowRight className="w-5 h-5 ml-2 rtl:rotate-180" />
+              </Button>
+            </div>
+          )}
 
+          {/* Step 3: Join Room - Enter Username */}
+          {step === 3 && (
+            <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <button onClick={() => setStep(2)} className="flex items-center gap-2 mb-2 text-slate-400 cursor-pointer hover:text-white transition-colors">
+                <ArrowLeft className="w-4 h-4 rtl:rotate-180" />
+                <span className="text-xs font-bold uppercase tracking-widest">{t.common.back}</span>
+              </button>
+              <div className="flex items-center justify-center mb-2">
+                <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-[0_8px_16px_rgba(59,130,246,0.3)]">
+                  <Users className="h-6 w-6 text-white" />
+                </div>
+              </div>
+              <div>
+                <label htmlFor="join-username" className="block text-xs font-bold text-slate-400 mb-3 uppercase tracking-widest text-center">
+                  {t.home.username}
+                </label>
+                <Input
+                  id="join-username"
+                  type="text"
+                  placeholder={t.home.usernamePlaceholder}
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  onKeyDown={(e) => handleKeyDown(e, handleJoinSubmit)}
+                  className="w-full bg-black/20 backdrop-blur-md border-transparent focus:border-white/20 text-white placeholder:text-slate-600 h-16 rounded-xl px-6 text-center text-xl transition-all duration-300 shadow-[inset_0_2px_4px_rgba(0,0,0,0.3)]"
+                  autoFocus
+                />
+              </div>
               <Button
                 onClick={handleJoinSubmit}
                 className="w-full bg-white text-slate-950 hover:bg-slate-200 font-bold text-lg h-14 rounded-xl shadow-lg transition-all duration-300"

@@ -2,6 +2,7 @@
   "name": "friendle_app",
   "version": "0.1.0",
   "private": true,
+  "license": "MIT",
   "scripts": {
     "dev": "next dev",
     "release": "node scripts/release.js",
@@ -38,6 +39,7 @@
     "@types/react-dom": "^19",
     "@vitejs/plugin-react": "^5.1.1",
     "@vitest/coverage-v8": "^4.0.13",
+    "dotenv": "^17.2.3",
     "eslint": "^9",
     "eslint-config-next": "16.0.3",
     "jsdom": "^27.2.0",
