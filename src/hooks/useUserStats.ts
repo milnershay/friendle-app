@@ -59,6 +59,13 @@ export const useUserStats = (): UseUserStatsReturn => {
             return;
         }
 
+        if (!db) {
+            console.error('Firebase database not initialized. Cannot load user profile.');
+            setError('Firebase not configured. Please contact support.');
+            setLoading(false);
+            return;
+        }
+
         const userRef = ref(db, `users/${uid}`);
 
         const fetchOrCreateProfile = async () => {
@@ -108,6 +115,11 @@ export const useUserStats = (): UseUserStatsReturn => {
     // Function to update stats after a game
     const updateUserStats = useCallback(async (gameResult: GameHistory) => {
         if (!uid || !profile) return;
+
+        if (!db) {
+            console.error('Firebase database not initialized. Cannot update user stats.');
+            return;
+        }
 
         const userRef = ref(db, `users/${uid}`);
 
@@ -182,6 +194,12 @@ export const useUserStats = (): UseUserStatsReturn => {
         if (!uid || !profile) return;
         if (newUsername.trim().length < 3 || newUsername.length > 15) {
             toast.error("Username must be between 3 and 15 characters.");
+            return;
+        }
+
+        if (!db) {
+            console.error('Firebase database not initialized. Cannot update username.');
+            toast.error('Unable to update username. Please try again later.');
             return;
         }
 

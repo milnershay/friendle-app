@@ -23,7 +23,16 @@ export function useConnectionStatus() {
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
 
-    // Monitor Firebase connection state
+    // Monitor Firebase connection state only if db is available
+    if (!db) {
+      console.warn('Firebase database not initialized. Connection monitoring disabled.');
+      setIsConnectedToFirebase(true); // Assume connected if Firebase not initialized
+      return () => {
+        window.removeEventListener('online', handleOnline);
+        window.removeEventListener('offline', handleOffline);
+      };
+    }
+
     const connectedRef = ref(db, '.info/connected');
     const unsubscribe = onValue(connectedRef, (snap) => {
       setIsConnectedToFirebase(snap.val() === true);
