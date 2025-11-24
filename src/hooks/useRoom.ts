@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import toast from "react-hot-toast";
 import { db } from "@/lib/firebase";
+import { useConnectionStatus } from "./useConnectionStatus";
 import { ref, onValue, set, update, get, runTransaction, onDisconnect } from "firebase/database";
 import { WORD_LISTS } from "@/lib/wordLists";
 
@@ -98,6 +99,7 @@ const getCategoryKey = (lang: 'en' | 'he', length: number): keyof PlayerStats =>
 // --- Hook ---
 
 export function useRoom(roomId: string, username: string | null) {
+    const { isOnline, isConnectedToFirebase } = useConnectionStatus();
     const [room, setRoom] = useState<RoomData | null>(null);
     const [userId, setUserId] = useState<string>("");
     const [error, setError] = useState("");
@@ -117,23 +119,37 @@ export function useRoom(roomId: string, username: string | null) {
     }, [roomId, username]);
 
     // Join existing room helper
+    const safeWrite = useCallback(async <T extends (...args: any[]) => Promise<any>>(action: T, ...args: Parameters<T>): Promise<ReturnType<T> | void> => {
+        if (!isOnline || !isConnectedToFirebase) {
+            toast.error("You are offline. Your action will be saved when you reconnect.", { id: "offline-toast" });
+            // In a future step, we would queue this action.
+            // For now, we just prevent it and notify the user.
+            return;
+        }
+        try {
+            return await action(...args);
+        } catch (err) {
+            console.error("Firebase write error:", err);
+            toast.error("An error occurred. Please try again.");
+            // Re-throw or handle as needed
+            throw err;
+        }
+    }, [isOnline, isConnectedToFirebase]);
+
+
     const joinRoom = useCallback(async () => {
         if (!userId || !username) return;
-        try {
-            await update(ref(db, `rooms/${roomId}/players`), {
-                [userId]: {
-                    id: userId,
-                    username,
-                    score: 0,
-                    status: 'waiting',
-                    guesses: JSON.stringify([])
-                }
-            });
-        } catch (err) {
-            console.error("Error joining room:", err);
-            setError("Failed to join room");
-        }
-    }, [roomId, userId, username]);
+        const action = async () => update(ref(db, `rooms/${roomId}/players`), {
+            [userId]: {
+                id: userId,
+                username,
+                score: 0,
+                status: 'waiting',
+                guesses: JSON.stringify([])
+            }
+        });
+        await safeWrite(action).catch(() => setError("Failed to join room"));
+    }, [roomId, userId, username, safeWrite]);
 
     // Subscribe to Room Updates & Presence
     useEffect(() => {
@@ -246,11 +262,11 @@ export function useRoom(roomId: string, username: string | null) {
     const startGame = useCallback(async () => {
         if (!room) return;
         setActionLoading('start');
-        try {
+
+        const transaction = async () => {
             const roomRef = ref(db, `rooms/${roomId}`);
-            toast.success("Game started!");
             await runTransaction(roomRef, (currentRoom: RoomData | null) => {
-                if (!currentRoom) return;
+                if (!currentRoom) return; // Abort transaction if room is null
 
                 let wordObj: { word: string; suggester?: string } | undefined;
                 const newQueue = [...(currentRoom.wordQueue || [])];
@@ -258,7 +274,7 @@ export function useRoom(roomId: string, username: string | null) {
                 let gameLength: number;
                 let nextRoutineIndex = currentRoom.routineIndex ?? 0;
 
-                // Routine Logic
+                 // Routine Logic
                 if (currentRoom.settings.useRoutine && currentRoom.settings.dailyRoutine && currentRoom.settings.dailyRoutine.length > 0) {
                     const routine = currentRoom.settings.dailyRoutine;
                     const currentIndex = currentRoom.routineIndex || 0;
@@ -317,13 +333,14 @@ export function useRoom(roomId: string, username: string | null) {
                     }
                 };
             });
-        } catch (err) {
-            console.error("Failed to start game:", err);
-            setError("Failed to start game");
-        } finally {
-            setActionLoading(null);
-        }
-    }, [room, roomId]);
+            toast.success("Game started!");
+        };
+
+        await safeWrite(transaction)
+            .catch(() => setError("Failed to start game"))
+            .finally(() => setActionLoading(null));
+
+    }, [room, roomId, safeWrite]);
 
     const checkGameOver = useCallback(async () => {
         // Fetch fresh state to be sure
@@ -341,9 +358,9 @@ export function useRoom(roomId: string, username: string | null) {
             if (freshRoom.settings.useRoutine) {
                 updatePayload.dailyRound = (freshRoom.dailyRound || 0) + 1;
             }
-            await update(ref(db, `rooms/${roomId}`), updatePayload);
+             await safeWrite(async () => update(ref(db, `rooms/${roomId}`), updatePayload));
         }
-    }, [roomId]);
+    }, [roomId, safeWrite]);
 
     const submitGuess = useCallback(async (guess: string) => {
         if (!room || room.gameState !== 'playing' || !userId) return;
@@ -452,7 +469,7 @@ export function useRoom(roomId: string, username: string | null) {
             updateData.stats = JSON.stringify(stats);
         }
 
-        await update(ref(db, `rooms/${roomId}/players/${userId}`), updateData);
+        await safeWrite(async () => update(ref(db, `rooms/${roomId}/players/${userId}`), updateData));
 
         // Check for Game Over (Everyone finished)
         // We do this optimistically. If I finished, check if everyone else is done.
@@ -462,26 +479,30 @@ export function useRoom(roomId: string, username: string | null) {
     }, [room, roomId, userId, checkGameOver]);
 
     const updateSettings = useCallback(async (newSettings: Partial<RoomSettings>) => {
-        await update(ref(db, `rooms/${roomId}/settings`), newSettings);
-        toast.success("Settings updated!");
-    }, [roomId]);
+        const action = async () => {
+            await update(ref(db, `rooms/${roomId}/settings`), newSettings);
+            toast.success("Settings updated!");
+        };
+        await safeWrite(action);
+    }, [roomId, safeWrite]);
 
     const resetRound = useCallback(async () => {
         if (!room) return;
         setActionLoading('reset');
-        try {
+
+        const action = async () => {
             const updatedPlayers = { ...room.players };
             Object.keys(updatedPlayers).forEach(key => {
-            updatedPlayers[key] = {
-                ...updatedPlayers[key],
-                status: 'waiting',
-                guesses: JSON.stringify([]),
-            };
-            delete updatedPlayers[key].endTime;
-            delete updatedPlayers[key].timeTaken;
-            delete updatedPlayers[key].startTime;
-            delete updatedPlayers[key].finalScore;
-        });
+                updatedPlayers[key] = {
+                    ...updatedPlayers[key],
+                    status: 'waiting',
+                    guesses: JSON.stringify([]),
+                };
+                delete updatedPlayers[key].endTime;
+                delete updatedPlayers[key].timeTaken;
+                delete updatedPlayers[key].startTime;
+                delete updatedPlayers[key].finalScore;
+            });
 
             await update(ref(db, `rooms/${roomId}`), {
                 gameState: 'waiting',
@@ -489,40 +510,44 @@ export function useRoom(roomId: string, username: string | null) {
                 currentSuggester: null,
                 players: updatedPlayers
             });
-        } catch (err) {
-            console.error("Failed to reset round:", err);
-            setError("Failed to reset round");
-        } finally {
-            setActionLoading(null);
-        }
-    }, [room, roomId]);
+        };
+
+        await safeWrite(action)
+            .catch(() => setError("Failed to reset round"))
+            .finally(() => setActionLoading(null));
+    }, [room, roomId, safeWrite]);
 
     const skipWord = useCallback(async () => {
-        await update(ref(db, `rooms/${roomId}`), {
-            gameState: 'finished'
-        });
-    }, [roomId]);
+        const action = async () => update(ref(db, `rooms/${roomId}`), { gameState: 'finished' });
+        await safeWrite(action);
+    }, [roomId, safeWrite]);
 
     const clearScores = useCallback(async () => {
         if (!room) return;
-        const updatedPlayers = { ...room.players };
-        Object.keys(updatedPlayers).forEach(key => {
-            updatedPlayers[key].score = 0;
-        });
-        await update(ref(db, `rooms/${roomId}/players`), updatedPlayers);
-    }, [room, roomId]);
+        const action = async () => {
+            const updatedPlayers = { ...room.players };
+            Object.keys(updatedPlayers).forEach(key => {
+                updatedPlayers[key].score = 0;
+            });
+            await update(ref(db, `rooms/${roomId}/players`), updatedPlayers);
+        };
+        await safeWrite(action);
+    }, [room, roomId, safeWrite]);
 
     const addCustomWord = useCallback(async (word: string) => {
         if (!room) return;
-        const currentQueue = room.settings.customQueue || [];
-        const wordEntry = { word: word.toUpperCase(), suggester: username || "Anonymous" };
-        const updatedQueue = [...currentQueue, wordEntry];
+        const action = async () => {
+            const currentQueue = room.settings.customQueue || [];
+            const wordEntry = { word: word.toUpperCase(), suggester: username || "Anonymous" };
+            const updatedQueue = [...currentQueue, wordEntry];
 
-        await update(ref(db, `rooms/${roomId}`), {
-            wordQueue: updatedQueue,
-            "settings/customQueue": updatedQueue
-        });
-    }, [room, roomId, username]);
+            await update(ref(db, `rooms/${roomId}`), {
+                wordQueue: updatedQueue,
+                "settings/customQueue": updatedQueue
+            });
+        };
+        await safeWrite(action);
+    }, [room, roomId, username, safeWrite]);
 
     return {
         room,
