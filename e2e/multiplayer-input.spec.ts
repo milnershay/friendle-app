@@ -20,7 +20,10 @@ test.describe('Multiplayer Input', () => {
         // Step 3: Click "Create Room" submit button
         await p1.getByRole('button', { name: 'Create Room' }).click();
 
-        await expect(p1.getByText('Waiting...')).toBeVisible();
+        // Expect player's own status to be "Waiting..."
+        await expect(
+            p1.locator('div').filter({ hasText: /^Player1Waiting\.\.\.$/ }).getByText('Waiting...')
+        ).toBeVisible();
 
         const roomUrl = p1.url();
         const roomId = roomUrl.split('/').pop()?.split('?')[0];
@@ -44,7 +47,10 @@ test.describe('Multiplayer Input', () => {
         // Step 5: Click "Join" submit button
         await p2.getByRole('button', { name: 'Join' }).click();
 
-        await expect(p2.getByText('Waiting...')).toBeVisible();
+        // Expect player's own status to be "Waiting..."
+        await expect(
+            p2.locator('div').filter({ hasText: /^Player2Waiting\.\.\.$/ }).getByText('Waiting...')
+        ).toBeVisible();
 
         // Player 1 starts game
         await p1.getByRole('button', { name: 'Start Game' }).click();
