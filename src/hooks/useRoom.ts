@@ -113,6 +113,7 @@ export function useRoom(roomId: string, username: string | null) {
     const prevPlayersRef = useRef<Record<string, Player> | null>(null);
 
     // Join existing room helper
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const safeWrite = useCallback(async <T extends (...args: any[]) => Promise<any>>(action: T, ...args: Parameters<T>): Promise<ReturnType<T> | void> => {
         if (!isOnline || !isConnectedToFirebase) {
             toast.error("You are offline. Your action will be saved when you reconnect.", { id: "offline-toast" });

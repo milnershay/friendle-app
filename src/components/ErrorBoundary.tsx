@@ -16,7 +16,7 @@ function ErrorFallback({ error, resetErrorBoundary }: FallbackProps) {
       className="flex h-screen w-full flex-col items-center justify-center space-y-4 bg-red-50 text-red-800"
     >
       <h2 className="text-2xl font-bold">Something went wrong.</h2>
-      <p>We're sorry, but the application encountered an unexpected error.</p>
+      <p>We&apos;re sorry, but the application encountered an unexpected error.</p>
       <pre className="w-1/2 overflow-auto whitespace-pre-wrap rounded bg-red-100 p-4 text-sm">
         {error.message}
       </pre>
