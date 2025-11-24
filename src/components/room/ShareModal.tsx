@@ -62,7 +62,7 @@ export default function ShareModal({ shareText, onClose, language }: ShareModalP
         </div>
 
         <div className="flex gap-3 mb-4 justify-center">
-            {navigator.share && (
+            {typeof navigator !== 'undefined' && 'share' in navigator && (
                  <button onClick={handleWebShare} className="bg-cyan-600 hover:bg-cyan-500 text-white font-semibold py-2.5 px-4 rounded-lg transition-all flex items-center justify-center gap-2">
                     <Share2 size={18} />
                     <span>{t.room.share}</span>
