@@ -63,4 +63,5 @@ ui-debug.log
 #-*-*-*-*-*-*-*-*-*-*-*-
 # Added by Agent
 #-*-*-*-*-*-*-*-*-*-*-*-
+*.log
 dev.log
