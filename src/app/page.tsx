@@ -103,10 +103,11 @@ export default function Home() {
       <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.03)_1px,transparent_1px)] bg-[size:64px_64px] [mask-image:radial-gradient(ellipse_at_center,transparent_20%,black)] pointer-events-none z-0" />
 
       {/* Main Content */}
-      <div className="relative z-10 w-full max-w-md px-6">
+      <div className="relative z-10 flex-grow flex flex-col items-center justify-center w-full px-6">
 
-        {/* Header */}
-        <div className="text-center mb-12">
+        <div className="w-full max-w-md">
+          {/* Header */}
+          <div className="text-center mb-12">
           <h1 className="text-5xl md:text-6xl font-bold mb-2 bg-gradient-to-b from-white to-white/60 bg-clip-text text-transparent tracking-tighter drop-shadow-[0_0_30px_rgba(255,255,255,0.1)]">
             {t.home.title}
           </h1>
@@ -249,6 +250,7 @@ export default function Home() {
             </div>
           )}
 
+        </div>
         </div>
       </div>
     </div>

@@ -134,9 +134,10 @@ export default function GameBoard({ currentWord, onGuess, gameState, guesses, la
             <div className="w-full max-w-[min(500px,100%)] flex flex-col gap-1 md:gap-2 touch-manipulation mt-2" dir="ltr">
                 {/* Always LTR for keyboard layout consistency, keys themselves can be Hebrew */}
                 {keyboardLayout.map((row, i) => (
-                    <div key={i} className="flex justify-center gap-1 md:gap-1 w-full">
+                    <div key={i} className="flex justify-center gap-1 md:gap-1.5 w-full">
                         {row.map((key) => {
                             const status = letterStatuses[key] || 'empty';
+                            const flexValue = key.length > 1 ? "flex-[1.5]" : "flex-1";
                             return (
                                 <button
                                     key={key}
@@ -156,12 +157,13 @@ export default function GameBoard({ currentWord, onGuess, gameState, guesses, la
                                         }
                                     }}
                                     className={cn(
-                                        "py-3.5 sm:py-4 px-0.5 sm:px-1 md:px-3 md:py-5 rounded-lg font-bold text-sm md:text-base transition-all flex-1 active:scale-95 active:opacity-70 touch-manipulation select-none shadow-md cursor-pointer",
+                                        "h-14 rounded font-bold text-sm md:text-base transition-all active:scale-95 active:opacity-70 touch-manipulation select-none shadow-md cursor-pointer",
+                                        flexValue,
                                         status === 'empty' && "bg-slate-600 active:bg-slate-500 text-white",
                                         status === 'correct' && "bg-green-600 text-white",
                                         status === 'present' && "bg-yellow-600 text-white",
                                         status === 'absent' && "bg-slate-800 text-slate-500",
-                                        key.length > 1 && "flex-[1.5] text-[0.65rem] md:text-sm font-bold uppercase"
+                                        key.length > 1 && "text-[0.65rem] md:text-sm font-bold uppercase"
                                     )}
                                     style={{ WebkitTapHighlightColor: 'transparent' }}
                                 >
