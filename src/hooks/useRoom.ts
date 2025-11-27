@@ -61,12 +61,14 @@ export interface RoomSettings {
     language: 'en' | 'he';
     dailyRoutine?: RoutineGame[];
     useRoutine?: boolean;
+    isPublic?: boolean;
 }
 
 export interface RoomData {
     id: string;
     players: Record<string, Player>;
     gameState: 'waiting' | 'playing' | 'finished';
+    playerCount?: number;
     currentWord: string | null;
     currentSuggester?: string | null;
     startTime: number;
@@ -130,15 +132,34 @@ export function useRoom(roomId: string, username: string | null) {
 
     const joinRoom = useCallback(async () => {
         if (!userId || !username) return;
-        const action = async () => update(ref(db, `rooms/${roomId}/players`), {
-            [userId]: {
-                id: userId,
-                username,
-                score: 0,
-                status: 'waiting',
-                guesses: JSON.stringify([])
+        const action = async () => {
+            const roomRef = ref(db, `rooms/${roomId}`);
+            const { committed, snapshot } = await runTransaction(roomRef, (currentRoom) => {
+                if (!currentRoom) {
+                    return;
+                }
+                const playerCount = Object.keys(currentRoom.players || {}).length + 1;
+                if (!currentRoom.players) currentRoom.players = {};
+                currentRoom.players[userId] = {
+                    id: userId,
+                    username,
+                    score: 0,
+                    status: 'waiting',
+                    guesses: JSON.stringify([])
+                };
+                currentRoom.playerCount = playerCount;
+                return currentRoom;
+            });
+
+            if (committed) {
+                const newPlayerCount = snapshot.child('playerCount').val();
+                if (newPlayerCount >= 8) {
+                    await remove(ref(db, `public_rooms/${roomId}`));
+                } else if (snapshot.child('settings/isPublic').val()) {
+                    await update(ref(db, `public_rooms/${roomId}`), { playerCount: newPlayerCount });
+                }
             }
-        });
+        };
         await safeWrite(action).catch(() => setError("Failed to join room"));
     }, [roomId, userId, username, safeWrite]);
 
@@ -156,6 +177,11 @@ export function useRoom(roomId: string, username: string | null) {
                 const con = onDisconnect(myPlayerRef);
                 con.update({ online: false });
                 update(myPlayerRef, { online: true });
+                // NOTE: While this handles marking a player as 'offline', client-side `onDisconnect`
+                // is not reliable enough for critical cleanup. For example, if a user closes their
+                // browser, we can't decrement `playerCount` or clean up the public room listing here.
+                // A robust solution would use a server-side process (e.g., Cloud Functions)
+                // to handle disconnects and ensure data integrity.
             }
         });
 
@@ -233,10 +259,15 @@ export function useRoom(roomId: string, username: string | null) {
                     gameState: 'waiting',
                     currentWord: "",
                     startTime: 0,
-                    settings: { wordLength: 5, customQueue: [], language: 'en' },
-                    wordQueue: []
+                    settings: { wordLength: 5, customQueue: [], language: 'en', isPublic: true },
+                    wordQueue: [],
+                    playerCount: 1,
                 };
                 await set(roomRef, initialRoom);
+                await set(ref(db, `public_rooms/${roomId}`), {
+                    playerCount: 1,
+                    createdAt: Date.now(),
+                });
             } else {
                 // Join existing room
                 if (!currentRoom.players || !currentRoom.players[userId]) {
@@ -325,6 +356,7 @@ export function useRoom(roomId: string, username: string | null) {
                 };
             });
             toast.success("Game started!");
+            await remove(ref(db, `public_rooms/${roomId}`));
         };
 
         await safeWrite(transaction)
@@ -455,10 +487,18 @@ export function useRoom(roomId: string, username: string | null) {
     const updateSettings = useCallback(async (newSettings: Partial<RoomSettings>) => {
         const action = async () => {
             await update(ref(db, `rooms/${roomId}/settings`), newSettings);
+            if (newSettings.isPublic === true) {
+                await set(ref(db, `public_rooms/${roomId}`), {
+                    playerCount: room?.playerCount || 1,
+                    createdAt: Date.now(),
+                });
+            } else if (newSettings.isPublic === false) {
+                await remove(ref(db, `public_rooms/${roomId}`));
+            }
             toast.success("Settings updated!");
         };
         await safeWrite(action);
-    }, [roomId, safeWrite]);
+    }, [roomId, safeWrite, room]);
 
     const resetRound = useCallback(async () => {
         if (!room) return;
@@ -524,20 +564,27 @@ export function useRoom(roomId: string, username: string | null) {
     }, [room, roomId, username, safeWrite]);
 
     const leaveRoom = useCallback(async () => {
-        if (!userId || !room) return;
-
+        if (!userId) return;
         const action = async () => {
-            // Remove player from room
-            await remove(ref(db, `rooms/${roomId}/players/${userId}`));
+            const roomRef = ref(db, `rooms/${roomId}`);
+            const { committed, snapshot } = await runTransaction(roomRef, (currentRoom) => {
+                if (!currentRoom) return;
 
-            // Check if room is now empty
-            const roomSnapshot = await get(ref(db, `rooms/${roomId}/players`));
-            const remainingPlayers = roomSnapshot.val();
+                if (currentRoom.players && currentRoom.players[userId]) {
+                    delete currentRoom.players[userId];
+                }
+                currentRoom.playerCount = Object.keys(currentRoom.players || {}).length;
+                return currentRoom;
+            });
 
-            // If no players left, delete the entire room
-            if (!remainingPlayers || Object.keys(remainingPlayers).length === 0) {
-                await remove(ref(db, `rooms/${roomId}`));
-                console.log(`Room ${roomId} deleted - no players remaining`);
+            if (committed) {
+                const newPlayerCount = snapshot.child('playerCount').val();
+                if (newPlayerCount === 0) {
+                    await remove(roomRef);
+                    await remove(ref(db, `public_rooms/${roomId}`));
+                } else if (snapshot.child('settings/isPublic').val()) {
+                    await update(ref(db, `public_rooms/${roomId}`), { playerCount: newPlayerCount });
+                }
             }
         };
 
@@ -545,7 +592,7 @@ export function useRoom(roomId: string, username: string | null) {
             console.error("Failed to leave room:", err);
             toast.error("Failed to leave room. Please try again.");
         });
-    }, [userId, room, roomId, safeWrite]);
+    }, [userId, roomId, safeWrite]);
 
     return {
         room,

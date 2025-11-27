@@ -2,9 +2,12 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
+import { db } from "@/lib/firebase"
+import { ref, get } from "firebase/database"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Users, ArrowRight, ArrowLeft, Plus, LogIn } from "lucide-react"
+import toast from "react-hot-toast"
 import { validateUsername, validateRoomCode, sanitizeText, checkRateLimit, getRateLimitKey } from "@/lib/validation"
 import { useTranslation, getStoredLanguage, setStoredLanguage, type Language } from "@/lib/i18n"
 
@@ -12,7 +15,7 @@ export default function Home() {
   const router = useRouter()
   const [username, setUsername] = useState("")
   const [roomCode, setRoomCode] = useState("")
-  const [step, setStep] = useState(0) // 0: Choose Action, 1: Create Room (enter username), 2: Join Room (enter room code), 3: Join Room (enter username)
+  const [step, setStep] = useState(0) // 0: Choose Action, 1: Create Room, 2: Join with Code, 3: Join with Code (Username), 4: Join Random (Username)
   const [language, setLanguage] = useState<Language>('en')
   const t = useTranslation(language)
 
@@ -26,17 +29,45 @@ export default function Home() {
     setStoredLanguage(newLang);
   };
 
+  const handleUsernameForRandomJoin = () => {
+    const sanitizedUsername = sanitizeText(username)
+    const usernameValidation = validateUsername(sanitizedUsername)
+    if (!usernameValidation.valid) {
+      return toast.error(usernameValidation.error)
+    }
+    handleJoinRandomRoom(sanitizedUsername);
+  };
+
+  const handleJoinRandomRoom = async (sanitizedUsername: string) => {
+    const publicRoomsRef = ref(db, 'public_rooms');
+    const snapshot = await get(publicRoomsRef);
+    const publicRooms = snapshot.val();
+
+    if (!publicRooms) {
+      return toast.error("No public rooms available. Why not create one?");
+    }
+
+    const availableRooms = Object.keys(publicRooms).filter(roomId => publicRooms[roomId].playerCount < 8);
+
+    if (availableRooms.length === 0) {
+      return toast.error("No available rooms. Why not create one?");
+    }
+
+    const randomRoomId = availableRooms[Math.floor(Math.random() * availableRooms.length)];
+    router.push(`/room/${randomRoomId}?username=${encodeURIComponent(sanitizedUsername)}`);
+  };
+
   const handleCreateRoom = () => {
     const sanitizedUsername = sanitizeText(username)
     const usernameValidation = validateUsername(sanitizedUsername)
     if (!usernameValidation.valid) {
-      return alert(usernameValidation.error)
+      return toast.error(usernameValidation.error)
     }
 
     const rateLimitKey = getRateLimitKey('create_room')
     const rateLimit = checkRateLimit(rateLimitKey, 5, 60000)
     if (!rateLimit.allowed) {
-      return alert(`Too many rooms created. Please try again in ${rateLimit.retryAfter} seconds`)
+      return toast.error(`Too many rooms created. Please try again in ${rateLimit.retryAfter} seconds`)
     }
 
     const newRoomId = Math.random().toString(36).substring(2, 8).toUpperCase()
@@ -47,7 +78,7 @@ export default function Home() {
     const sanitizedRoomId = sanitizeText(roomCode)
     const roomValidation = validateRoomCode(sanitizedRoomId)
     if (!roomValidation.valid) {
-      return alert(roomValidation.error)
+      return toast.error(roomValidation.error)
     }
     setStep(3)
   }
@@ -56,13 +87,13 @@ export default function Home() {
     const sanitizedUsername = sanitizeText(username)
     const usernameValidation = validateUsername(sanitizedUsername)
     if (!usernameValidation.valid) {
-      return alert(usernameValidation.error)
+      return toast.error(usernameValidation.error)
     }
 
     const sanitizedRoomId = sanitizeText(roomCode)
     const roomValidation = validateRoomCode(sanitizedRoomId)
     if (!roomValidation.valid) {
-      return alert(roomValidation.error)
+      return toast.error(roomValidation.error)
     }
 
     router.push(`/room/${sanitizedRoomId.toUpperCase()}?username=${encodeURIComponent(sanitizedUsername)}`)
@@ -139,10 +170,25 @@ export default function Home() {
               </div>
 
               <Button
-                onClick={() => setStep(2)}
+                onClick={() => setStep(4)}
                 className="w-full bg-white/10 hover:bg-white/20 border border-white/10 text-white font-bold text-lg h-16 rounded-xl transition-all duration-300 flex items-center justify-center gap-3"
               >
-                <LogIn className="w-6 h-6" /> {t.home.join}
+                <Users className="w-6 h-6" /> {t.home.joinRandom}
+              </Button>
+
+              <div className="relative flex py-2 items-center">
+                <div className="flex-grow border-t border-white/10"></div>
+                <span className="flex-shrink mx-4 text-slate-500 text-[10px] uppercase tracking-widest font-bold">
+                  {t.home.or}
+                </span>
+                <div className="flex-grow border-t border-white/10"></div>
+              </div>
+
+              <Button
+                onClick={() => setStep(2)}
+                className="w-full bg-black/20 hover:bg-black/30 border border-white/10 text-slate-300 font-bold text-base h-12 rounded-xl transition-all duration-300 flex items-center justify-center gap-3"
+              >
+                <LogIn className="w-5 h-5" /> {t.home.joinWithCode}
               </Button>
             </div>
           )}
@@ -249,6 +295,43 @@ export default function Home() {
               </Button>
             </div>
           )}
+
+          {/* Step 4: Join Random Room - Enter Username */}
+          {step === 4 && (
+            <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <button onClick={() => setStep(0)} className="flex items-center gap-2 mb-2 text-slate-400 cursor-pointer hover:text-white transition-colors">
+                <ArrowLeft className="w-4 h-4 rtl:rotate-180" />
+                <span className="text-xs font-bold uppercase tracking-widest">{t.common.back}</span>
+              </button>
+              <div className="flex items-center justify-center mb-2">
+                <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-[0_8px_16px_rgba(59,130,246,0.3)]">
+                  <Users className="h-6 w-6 text-white" />
+                </div>
+              </div>
+              <div>
+                <label htmlFor="join-random-username" className="block text-xs font-bold text-slate-400 mb-3 uppercase tracking-widest text-center">
+                  {t.home.username}
+                </label>
+                <Input
+                  id="join-random-username"
+                  type="text"
+                  placeholder={t.home.usernamePlaceholder}
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  onKeyDown={(e) => handleKeyDown(e, handleUsernameForRandomJoin)}
+                  className="w-full bg-black/20 backdrop-blur-md border-transparent focus:border-white/20 text-white placeholder:text-slate-600 h-16 rounded-xl px-6 text-center text-xl transition-all duration-300 shadow-[inset_0_2px_4px_rgba(0,0,0,0.3)]"
+                  autoFocus
+                />
+              </div>
+              <Button
+                onClick={handleUsernameForRandomJoin}
+                className="w-full bg-white text-slate-950 hover:bg-slate-200 font-bold text-lg h-14 rounded-xl shadow-lg transition-all duration-300"
+              >
+                {t.home.joinRandom} <ArrowRight className="w-5 h-5 ml-2 rtl:rotate-180" />
+              </Button>
+            </div>
+          )}
+
 
         </div>
         </div>
