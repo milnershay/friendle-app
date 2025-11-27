@@ -2,10 +2,18 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import Home from './page';
 import * as navigation from 'next/navigation';
+import toast from 'react-hot-toast';
 
 // Mock useRouter
 vi.mock('next/navigation', () => ({
     useRouter: vi.fn(),
+}));
+
+// Mock react-hot-toast
+vi.mock('react-hot-toast', () => ({
+    default: {
+        error: vi.fn(),
+    },
 }));
 
 describe('Home Page - New Flow', () => {
@@ -24,7 +32,8 @@ describe('Home Page - New Flow', () => {
     it('renders the initial action choice (step 0)', async () => {
         render(<Home />);
         expect(await screen.findByText('Create Room')).toBeDefined();
-        expect(await screen.findByText('Join')).toBeDefined();
+        expect(await screen.findByText('Join Random Room')).toBeDefined();
+        expect(await screen.findByText('Join with Code')).toBeDefined();
         expect(screen.queryByLabelText('Username')).toBeNull();
     });
 
@@ -37,7 +46,7 @@ describe('Home Page - New Flow', () => {
 
     it('navigates to join room flow (step 2)', async () => {
         render(<Home />);
-        fireEvent.click(await screen.findByText('Join'));
+        fireEvent.click(await screen.findByText('Join with Code'));
         expect(await screen.findByLabelText('Room Code')).toBeDefined();
         expect(await screen.findByText('Next')).toBeDefined();
     });
@@ -56,18 +65,16 @@ describe('Home Page - New Flow', () => {
     });
 
     it('validates username on create room submission', async () => {
-        const alertMock = vi.spyOn(window, 'alert').mockImplementation(() => {});
         render(<Home />);
         fireEvent.click(await screen.findByText('Create Room'));
         fireEvent.click(await screen.findByText('Create Room')); // Empty username
-        expect(alertMock).toHaveBeenCalledWith('Username cannot be empty');
+        expect(toast.error).toHaveBeenCalledWith('Username cannot be empty');
         expect(pushMock).not.toHaveBeenCalled();
-        alertMock.mockRestore();
     });
 
     it('allows joining a room with valid code and username', async () => {
         render(<Home />);
-        fireEvent.click(await screen.findByText('Join'));
+        fireEvent.click(await screen.findByText('Join with Code'));
 
         const roomInput = await screen.findByLabelText('Room Code');
         fireEvent.change(roomInput, { target: { value: 'VALID6' } });
@@ -83,17 +90,15 @@ describe('Home Page - New Flow', () => {
     });
 
     it('validates room code before asking for username', async () => {
-        const alertMock = vi.spyOn(window, 'alert').mockImplementation(() => {});
         render(<Home />);
-        fireEvent.click(await screen.findByText('Join'));
+        fireEvent.click(await screen.findByText('Join with Code'));
 
         const roomInput = await screen.findByLabelText('Room Code');
         fireEvent.change(roomInput, { target: { value: 'INVALID' } }); // Too long
         fireEvent.click(await screen.findByText('Next'));
 
-        expect(alertMock).toHaveBeenCalledWith('Room code must be exactly 6 characters');
+        expect(toast.error).toHaveBeenCalledWith('Room code must be exactly 6 characters');
         expect(screen.queryByLabelText('Username')).toBeNull();
-        alertMock.mockRestore();
     });
 
     it('supports back button navigation', async () => {
@@ -106,7 +111,7 @@ describe('Home Page - New Flow', () => {
         expect(await screen.findByText('Create Room')).toBeDefined();
 
         // Step 0 -> 2 (Join)
-        fireEvent.click(await screen.findByText('Join'));
+        fireEvent.click(await screen.findByText('Join with Code'));
         expect(await screen.findByLabelText('Room Code')).toBeDefined();
         // Step 2 -> 3
         fireEvent.change(await screen.findByLabelText('Room Code'), { target: { value: 'ABCDEF' } });
@@ -127,7 +132,7 @@ describe('Home Page - New Flow', () => {
 
         // Check if main buttons are translated
         expect(await screen.findByText('צור חדר')).toBeDefined();
-        expect(await screen.findByText('הצטרף')).toBeDefined();
+        expect(await screen.findByText('הצטרף עם קוד')).toBeDefined();
 
         // Navigate to create flow and check translation
         fireEvent.click(await screen.findByText('צור חדר'));

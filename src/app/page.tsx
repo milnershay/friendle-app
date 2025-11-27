@@ -33,7 +33,9 @@ export default function Home() {
     const sanitizedUsername = sanitizeText(username)
     const usernameValidation = validateUsername(sanitizedUsername)
     if (!usernameValidation.valid) {
-      return toast.error(usernameValidation.error)
+        if (usernameValidation.error) {
+            return toast.error(usernameValidation.error)
+        }
     }
     handleJoinRandomRoom(sanitizedUsername);
   };
@@ -61,7 +63,9 @@ export default function Home() {
     const sanitizedUsername = sanitizeText(username)
     const usernameValidation = validateUsername(sanitizedUsername)
     if (!usernameValidation.valid) {
-      return toast.error(usernameValidation.error)
+        if (usernameValidation.error) {
+            return toast.error(usernameValidation.error)
+        }
     }
 
     const rateLimitKey = getRateLimitKey('create_room')
@@ -78,7 +82,9 @@ export default function Home() {
     const sanitizedRoomId = sanitizeText(roomCode)
     const roomValidation = validateRoomCode(sanitizedRoomId)
     if (!roomValidation.valid) {
-      return toast.error(roomValidation.error)
+        if (roomValidation.error) {
+            return toast.error(roomValidation.error)
+        }
     }
     setStep(3)
   }
@@ -87,13 +93,17 @@ export default function Home() {
     const sanitizedUsername = sanitizeText(username)
     const usernameValidation = validateUsername(sanitizedUsername)
     if (!usernameValidation.valid) {
-      return toast.error(usernameValidation.error)
+        if (usernameValidation.error) {
+            return toast.error(usernameValidation.error)
+        }
     }
 
     const sanitizedRoomId = sanitizeText(roomCode)
     const roomValidation = validateRoomCode(sanitizedRoomId)
     if (!roomValidation.valid) {
-      return toast.error(roomValidation.error)
+        if (roomValidation.error) {
+            return toast.error(roomValidation.error)
+        }
     }
 
     router.push(`/room/${sanitizedRoomId.toUpperCase()}?username=${encodeURIComponent(sanitizedUsername)}`)
