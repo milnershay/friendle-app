@@ -20,7 +20,7 @@ test.describe('Multiplayer Input', () => {
         // Step 3: Click "Create Room" submit button
         await p1.getByRole('button', { name: 'Create Room' }).click();
 
-        await expect(p1.getByText('Waiting...')).toBeVisible();
+        await expect(p1.getByText('Waiting...').first()).toBeVisible();
 
         const roomUrl = p1.url();
         const roomId = roomUrl.split('/').pop()?.split('?')[0];
@@ -44,14 +44,14 @@ test.describe('Multiplayer Input', () => {
         // Step 5: Click "Join" submit button
         await p2.getByRole('button', { name: 'Join' }).click();
 
-        await expect(p2.getByText('Waiting...')).toBeVisible();
+        await expect(p2.getByText('Waiting...').first()).toBeVisible();
 
         // Player 1 starts game
         await p1.getByRole('button', { name: 'Start Game' }).click();
 
         // Both should see game board
-        await expect(p1.getByTestId('game-board')).toBeVisible();
-        await expect(p2.getByTestId('game-board')).toBeVisible();
+        await expect(p1.getByTestId('game-board').first()).toBeVisible();
+        await expect(p2.getByTestId('game-board').first()).toBeVisible();
 
         // Player 2 tries to type via physical keyboard
         await p2.keyboard.type('A');

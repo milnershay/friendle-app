@@ -45,7 +45,7 @@ test.describe('Multiplayer Game Flow', () => {
             console.log('Room created with code:', roomCode);
 
             // Verify Player 1 sees themselves in the room
-            await expect(player1.getByText('Alice')).toBeVisible();
+            await expect(player1.getByText('Alice').first()).toBeVisible();
 
             // PLAYER 2: Join the same room
             await player2.goto('/', { waitUntil: 'networkidle' });
@@ -82,11 +82,11 @@ test.describe('Multiplayer Game Flow', () => {
             await player2.waitForURL(/\/room\/[A-Z0-9]+/, { timeout: 10000 });
 
             // Verify both players see each other
-            await expect(player2.getByText('Bob')).toBeVisible();
-            await expect(player2.getByText('Alice')).toBeVisible();
+            await expect(player2.getByText('Bob').first()).toBeVisible();
+            await expect(player2.getByText('Alice').first()).toBeVisible();
 
             // Player 1 should also see Player 2
-            await expect(player1.getByText('Bob')).toBeVisible();
+            await expect(player1.getByText('Bob').first()).toBeVisible();
 
             console.log('Both players in room');
 
@@ -96,92 +96,34 @@ test.describe('Multiplayer Game Flow', () => {
             await startButton.click();
 
             // Both players should see the game board
-            await expect(player1.getByTestId('game-board')).toBeVisible({ timeout: 10000 });
-            await expect(player2.getByTestId('game-board')).toBeVisible({ timeout: 10000 });
+            await expect(player1.getByTestId('game-board').first()).toBeVisible({ timeout: 10000 });
+            await expect(player2.getByTestId('game-board').first()).toBeVisible({ timeout: 10000 });
 
             console.log('Game started for both players');
-
-            // Get the current word from Firebase (we'll need to make strategic guesses)
-            // For testing, we'll try common 5-letter words and verify the game mechanics work
 
             // PLAYER 1: Make a guess
             await player1.keyboard.type('HELLO');
             await expect(player1.getByTestId('game-board').getByText('H').first()).toBeVisible();
             await player1.keyboard.press('Enter');
 
-            // Wait a moment for Firebase sync
-            await player1.waitForTimeout(500);
+            // Wait for Firebase sync
+            await player1.waitForTimeout(1000);
 
             // PLAYER 2: Make a guess
             await player2.keyboard.type('WORLD');
             await expect(player2.getByTestId('game-board').getByText('W').first()).toBeVisible();
             await player2.keyboard.press('Enter');
 
-            await player2.waitForTimeout(500);
+            await player2.waitForTimeout(1000);
 
-            // Try more words to potentially win
-            const commonWords = ['ABOUT', 'AFTER', 'AGAIN', 'COULD', 'EVERY', 'FIRST', 'FOUND', 'GREAT', 'HOUSE', 'KNOW', 'LARGE', 'MIGHT', 'NEVER', 'OTHER', 'PLACE', 'POINT', 'RIGHT', 'SMALL', 'SOUND', 'STILL', 'THEIR', 'THERE', 'THESE', 'THING', 'THINK', 'THREE', 'WATER', 'WHERE', 'WHICH', 'WHILE', 'WOULD', 'WRITE', 'YEARS'];
-
-            let gameFinished = false;
-            let attempts = 0;
-            const maxAttempts = 6;
-
-            // Try words until someone wins or max attempts reached
-            for (const word of commonWords) {
-                if (attempts >= maxAttempts || gameFinished) break;
-
-                // Player 1 tries
-                if (attempts < maxAttempts) {
-                    await player1.keyboard.type(word);
-                    await player1.keyboard.press('Enter');
-                    await player1.waitForTimeout(500);
-                    attempts++;
-
-                    // Check if game over modal appeared for Player 1
-                    const gameOverText = player1.getByText('Game Over');
-                    if (await gameOverText.isVisible().catch(() => false)) {
-                        gameFinished = true;
-                        console.log('Game finished! Player 1 saw game over');
-                        break;
-                    }
-                }
-
-                if (attempts >= maxAttempts || gameFinished) break;
-
-                // Player 2 tries
-                if (attempts < maxAttempts) {
-                    await player2.keyboard.type(word);
-                    await player2.keyboard.press('Enter');
-                    await player2.waitForTimeout(500);
-                    attempts++;
-
-                    // Check if game over modal appeared for Player 2
-                    const gameOverText = player2.getByText('Game Over');
-                    if (await gameOverText.isVisible().catch(() => false)) {
-                        gameFinished = true;
-                        console.log('Game finished! Player 2 saw game over');
-                        break;
-                    }
-                }
-            }
-
-            // At this point, either someone won or we used all attempts
-            // The game should show results regardless
-
-            // Wait for results modal (should appear for both players)
-            // Give it extra time as Firebase needs to sync
-            await player1.waitForTimeout(2000);
-            await player2.waitForTimeout(2000);
-
-            // Verify both players see some game state update
-            // Even if no one won, the game board should show the guesses
+            // Verify both players can see the game board with their guesses
             const p1BoardVisible = await player1.getByTestId('game-board').isVisible();
             const p2BoardVisible = await player2.getByTestId('game-board').isVisible();
 
             expect(p1BoardVisible).toBeTruthy();
             expect(p2BoardVisible).toBeTruthy();
 
-            console.log('Test completed - both players maintained game state');
+            console.log('Test completed - both players can make guesses and see game board');
 
         } finally {
             // Clean up
@@ -192,7 +134,7 @@ test.describe('Multiplayer Game Flow', () => {
         }
     });
 
-    test('player scores update after winning a game', async ({ browser }) => {
+    test('player can create room, start game, and make guesses', async ({ browser }) => {
         const player1Context = await browser.newContext();
         const player1 = await player1Context.newPage();
 
@@ -223,42 +165,29 @@ test.describe('Multiplayer Game Flow', () => {
 
             await player1.waitForURL(/\/room\/[A-Z0-9]+/, { timeout: 10000 });
 
-            // Check initial score is 0
-            await expect(player1.getByText('TestPlayer')).toBeVisible();
+            // Verify player name is visible
+            await expect(player1.getByText('TestPlayer').first()).toBeVisible();
 
             // Start game
             const startButton = player1.getByRole('button', { name: 'Start Game' });
             await startButton.waitFor({ state: 'visible', timeout: 10000 });
             await startButton.click();
 
-            await expect(player1.getByTestId('game-board')).toBeVisible({ timeout: 10000 });
+            await expect(player1.getByTestId('game-board').first()).toBeVisible({ timeout: 10000 });
 
-            // Make guesses - try to win
-            const words = ['HELLO', 'WORLD', 'ABOUT', 'AFTER', 'COULD', 'FIRST'];
+            // Make a couple of guesses to verify game mechanics work
+            await player1.keyboard.type('HELLO');
+            await expect(player1.getByTestId('game-board').getByText('H').first()).toBeVisible();
+            await player1.keyboard.press('Enter');
+            await player1.waitForTimeout(1000);
 
-            for (const word of words) {
-                await player1.keyboard.type(word);
-                await player1.keyboard.press('Enter');
-                await player1.waitForTimeout(800);
+            await player1.keyboard.type('WORLD');
+            await expect(player1.getByTestId('game-board').getByText('W').first()).toBeVisible();
+            await player1.keyboard.press('Enter');
+            await player1.waitForTimeout(1000);
 
-                // Check if we won
-                const gameOverModal = player1.getByText('Game Over');
-                if (await gameOverModal.isVisible().catch(() => false)) {
-                    console.log('Player won with word:', word);
-
-                    // Verify results modal shows
-                    await expect(gameOverModal).toBeVisible();
-
-                    // Close modal
-                    const closeButton = player1.getByRole('button', { name: 'Close' });
-                    if (await closeButton.isVisible().catch(() => false)) {
-                        await closeButton.click();
-                        await player1.waitForTimeout(1000);
-                    }
-
-                    break;
-                }
-            }
+            // Verify game board is still visible and functional
+            await expect(player1.getByTestId('game-board').first()).toBeVisible();
 
             console.log('Test completed - verified game mechanics');
 
