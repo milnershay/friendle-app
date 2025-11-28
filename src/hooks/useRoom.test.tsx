@@ -337,4 +337,58 @@ describe('useRoom', () => {
         expect(remove).toHaveBeenCalledWith(expect.objectContaining({ key: `rooms/${roomId}` }));
         expect(remove).toHaveBeenCalledWith(expect.objectContaining({ key: `public_rooms/${roomId}` }));
     });
+
+    it('correctly calculates playerCount when joining room where user is already present (race condition)', async () => {
+        const bugRoomId = 'roomBug';
+        const bugUsername = 'Alice';
+        // userId is 'user123' from mock useAuth
+
+        // Mock onValue for this specific room to trigger join
+        (onValue as Mock).mockImplementation((query, cb) => {
+             if (query.key === `rooms/${bugRoomId}`) {
+                 // Simulate room existing but we are NOT in the local snapshot yet
+                 cb({
+                     exists: () => true,
+                     val: () => ({
+                         id: bugRoomId,
+                         players: { 'other': {} },
+                         gameState: 'waiting'
+                     })
+                 });
+             }
+             return vi.fn();
+        });
+
+        // Capture the transaction update function
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        let capturedUpdateFn: (data: any) => any;
+        (runTransaction as Mock).mockImplementation(async (...args) => {
+            capturedUpdateFn = args[1];
+            return { committed: true, snapshot: { val: () => ({}), child: () => ({ val: () => 0 }) } };
+        });
+
+        renderHook(() => useRoom(bugRoomId, bugUsername));
+
+        await waitFor(() => {
+            expect(runTransaction).toHaveBeenCalled();
+        });
+
+        expect(capturedUpdateFn!).toBeDefined();
+
+        // Simulate the race condition: DB actually has the user
+        const currentRoomState = {
+            players: {
+                [userId]: { id: userId, username: bugUsername },
+                'other': {}
+            },
+            playerCount: 2
+        };
+
+        const result = capturedUpdateFn!(currentRoomState);
+
+        // Verify that playerCount matches the actual number of players (2)
+        const actualKeys = Object.keys(result.players).length;
+        expect(result.playerCount).toBe(actualKeys);
+        expect(result.playerCount).toBe(2);
+    });
 });
