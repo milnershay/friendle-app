@@ -53,6 +53,14 @@ vi.mock('firebase/database', () => {
     }
 });
 
+type MockSnapshot = {
+    exists: () => boolean;
+    val: () => unknown;
+    child?: (path: string) => MockSnapshot;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    [key: string]: any;
+};
+
 describe('useRoom', () => {
   const mockRoomId = 'test-room-123';
   const mockUsername = 'TestUser';
@@ -60,8 +68,8 @@ describe('useRoom', () => {
   const mockUpdateUserStats = vi.fn();
 
   // Helper to simulate Firebase data updates
-  let roomUpdateCallback: (snapshot: any) => void;
-  let connectionUpdateCallback: (snapshot: any) => void;
+  let roomUpdateCallback: (snapshot: MockSnapshot) => void;
+  let connectionUpdateCallback: (snapshot: MockSnapshot) => void;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -101,7 +109,7 @@ describe('useRoom', () => {
 
     // Simulate connection
     act(() => {
-        if (connectionUpdateCallback) connectionUpdateCallback({ val: () => true });
+        if (connectionUpdateCallback) connectionUpdateCallback({ val: () => true, exists: () => true });
     });
 
     // Simulate room data update (room exists)
@@ -133,7 +141,7 @@ describe('useRoom', () => {
         val: () => null
     });
 
-    const { result } = renderHook(() => useRoom(mockRoomId, mockUsername));
+    renderHook(() => useRoom(mockRoomId, mockUsername));
 
     act(() => {
         if (roomUpdateCallback) {
@@ -175,7 +183,7 @@ describe('useRoom', () => {
         };
     });
 
-    const { result } = renderHook(() => useRoom(mockRoomId, mockUsername));
+    renderHook(() => useRoom(mockRoomId, mockUsername));
 
     act(() => {
         if (roomUpdateCallback) {
@@ -328,10 +336,10 @@ describe('useRoom', () => {
 
     // Mock runTransaction for leave
     (firebaseDatabase.runTransaction as Mock).mockImplementation(async (ref, transactionUpdate) => {
-        const newData = transactionUpdate(mockRoomData); // Logic removes player
+        transactionUpdate(mockRoomData); // Logic removes player
         return {
             committed: true,
-            snapshot: { child: (key: string) => ({ val: () => 0 }) } // 0 players left
+            snapshot: { child: () => ({ val: () => 0 }) } // 0 players left
         };
     });
 
