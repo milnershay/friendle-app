@@ -1,8 +1,7 @@
 import { describe, it, expect, vi, beforeEach, type Mock } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
-import { useRoom } from './useRoom';
-import { ref, onValue, set, update, get, remove, runTransaction, onDisconnect } from 'firebase/database';
-import toast from 'react-hot-toast';
+import { useRoom, type RoomData } from './useRoom';
+import { ref, onValue, set, update, get, remove, runTransaction } from 'firebase/database';
 
 // Mock dependencies
 vi.mock('@/lib/firebase', () => ({
@@ -49,12 +48,14 @@ vi.mock('@/lib/wordLists', () => ({
     }
 }));
 
+type OnValueCallback = (snapshot: { exists: () => boolean; val: () => unknown }) => void;
+
 describe('useRoom', () => {
     const roomId = 'room123';
     const username = 'TestPlayer';
     const userId = 'user123';
 
-    let roomCallback: (snap: any) => void;
+    let roomCallback: OnValueCallback;
 
     beforeEach(() => {
         vi.clearAllMocks();
@@ -69,7 +70,8 @@ describe('useRoom', () => {
             return vi.fn(); // unsubscribe
         });
 
-        (runTransaction as Mock).mockImplementation(async (ref, transactionFn) => {
+        // Default implementation
+        (runTransaction as Mock).mockImplementation(async () => {
             return { committed: true, snapshot: { val: () => ({}), child: () => ({ val: () => 0 }) } };
         });
     });
@@ -87,7 +89,7 @@ describe('useRoom', () => {
 
         act(() => {
             if (roomCallback) {
-                roomCallback({ exists: () => false });
+                roomCallback({ exists: () => false, val: () => null });
             }
         });
 
@@ -113,9 +115,10 @@ describe('useRoom', () => {
         };
 
         // Mock transaction for join
-        (runTransaction as Mock).mockImplementation(async (ref, txFn) => {
+        (runTransaction as Mock).mockImplementation(async (...args) => {
+            const txFn = args[1];
             const result = txFn(existingRoom);
-            return { committed: true, snapshot: { child: () => ({ val: () => 2 }) } };
+            return { committed: true, snapshot: { child: () => ({ val: () => result }) } };
         });
 
         renderHook(() => useRoom(roomId, username));
@@ -150,8 +153,9 @@ describe('useRoom', () => {
         });
 
         // Mock transaction for startGame
-        let transactionResult: any;
-        (runTransaction as Mock).mockImplementation(async (ref, txFn) => {
+        let transactionResult: RoomData | undefined;
+        (runTransaction as Mock).mockImplementation(async (...args) => {
+            const txFn = args[1];
             transactionResult = txFn(roomData);
             return { committed: true, snapshot: { val: () => transactionResult } };
         });
@@ -162,9 +166,9 @@ describe('useRoom', () => {
 
         expect(runTransaction).toHaveBeenCalled();
         expect(transactionResult).toBeDefined();
-        expect(transactionResult.gameState).toBe('playing');
-        expect(transactionResult.currentWord).toBe('HELLO'); // From mock
-        expect(transactionResult.players[userId].status).toBe('playing');
+        expect(transactionResult!.gameState).toBe('playing');
+        expect(transactionResult!.currentWord).toBe('HELLO'); // From mock
+        expect(transactionResult!.players[userId].status).toBe('playing');
     });
 
     it('submits a correct guess', async () => {
@@ -299,7 +303,8 @@ describe('useRoom', () => {
         };
 
         // Mock transaction for leaveRoom
-        (runTransaction as Mock).mockImplementation(async (ref, txFn) => {
+        (runTransaction as Mock).mockImplementation(async (...args) => {
+            const txFn = args[1];
             const currentRoom = { ...roomData };
             // Simulate the modification happening inside transaction
             const res = txFn(currentRoom);
