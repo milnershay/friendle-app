@@ -14,7 +14,7 @@ test.describe('Smoke Tests', () => {
         const createButton = page.getByRole('button', { name: /Create Room/i });
         const joinButton = page.getByRole('button', { name: 'Join' });
 
-        await expect(createButton).toBeVisible();
-        await expect(joinButton).toBeVisible();
+        await expect(createButton.first()).toBeVisible();
+        await expect(joinButton.first()).toBeVisible();
     });
 });
