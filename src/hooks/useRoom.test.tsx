@@ -1,20 +1,24 @@
-
-import { renderHook, waitFor } from '@testing-library/react';
+import { renderHook, waitFor, act } from '@testing-library/react';
 import { useRoom } from './useRoom';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import * as firebaseDatabase from 'firebase/database';
 import { type DataSnapshot } from 'firebase/database';
 
+// Hoisted mock for tracking updateUserStats calls
+const { mockUpdateUserStats } = vi.hoisted(() => {
+    return { mockUpdateUserStats: vi.fn() };
+});
+
 // Mock Firebase
 vi.mock('firebase/database', async () => {
     return {
         getDatabase: vi.fn(),
-        ref: vi.fn(),
+        ref: vi.fn((db, path) => ({ path })),
         onValue: vi.fn(),
         runTransaction: vi.fn(),
         set: vi.fn(),
-        update: vi.fn(),
-        get: vi.fn(),
+        update: vi.fn().mockResolvedValue(undefined),
+        get: vi.fn().mockResolvedValue({ val: () => null }),
         remove: vi.fn(),
         onDisconnect: vi.fn(() => ({ update: vi.fn() })),
     };
@@ -30,7 +34,7 @@ vi.mock('./useConnectionStatus', () => ({
 }));
 
 vi.mock('./useUserStats', () => ({
-    useUserStats: () => ({ updateUserStats: vi.fn() })
+    useUserStats: () => ({ updateUserStats: mockUpdateUserStats })
 }));
 
 // Mock toast
@@ -99,5 +103,58 @@ describe('useRoom Bug Reproduction', () => {
 
         // AFTER FIX: result.playerCount should be 1.
         expect(result.playerCount).toBe(1);
+    });
+
+    it('should trigger updateUserStats exactly once on double submission of winning guess', async () => {
+        const roomId = 'room1';
+        const username = 'TestUser';
+
+        // Mock onValue to return a room in playing state
+        vi.mocked(firebaseDatabase.onValue).mockImplementation((query, callback) => {
+            if (typeof query === 'object' && 'path' in query && query.path === '.info/connected') {
+                callback({ val: () => true } as unknown as DataSnapshot);
+            } else if (typeof query === 'object' && 'path' in query && query.path?.startsWith('rooms/')) {
+                callback({
+                    exists: () => true,
+                    val: () => ({
+                        id: 'room1',
+                        gameState: 'playing',
+                        currentWord: 'APPLE',
+                        startTime: Date.now(),
+                        settings: { wordLength: 5, language: 'en' },
+                        players: {
+                            user1: {
+                                id: 'user1',
+                                username: 'TestUser',
+                                score: 0,
+                                status: 'playing',
+                                guesses: JSON.stringify(['PAPER', 'GRAPE', 'LEMON', 'BEACH'])
+                            }
+                        }
+                    }),
+                    child: () => ({ val: () => ({}) })
+                } as unknown as DataSnapshot);
+            }
+            return () => {};
+        });
+
+        const { result } = renderHook(() => useRoom(roomId, username));
+
+        // Wait for room to be loaded
+        await waitFor(() => {
+            expect(result.current.room).not.toBeNull();
+        });
+
+        const winningGuess = 'APPLE';
+
+        // Call submitGuess twice concurrently
+        await act(async () => {
+            const p1 = result.current.submitGuess(winningGuess);
+            const p2 = result.current.submitGuess(winningGuess);
+            await Promise.all([p1, p2]);
+        });
+
+        // Verify updateUserStats called exactly once (not twice)
+        expect(mockUpdateUserStats).toHaveBeenCalledTimes(1);
     });
 });

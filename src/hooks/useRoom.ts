@@ -109,6 +109,7 @@ export function useRoom(roomId: string, username: string | null) {
     const [roomLoading, setRoomLoading] = useState(true);
     const [actionLoading, setActionLoading] = useState<string | null>(null);
     const prevPlayersRef = useRef<Record<string, Player> | null>(null);
+    const isSubmittingRef = useRef(false);
 
     // Join existing room helper
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -385,100 +386,106 @@ export function useRoom(roomId: string, username: string | null) {
     }, [roomId, safeWrite]);
 
     const submitGuess = useCallback(async (guess: string) => {
+        if (isSubmittingRef.current) return;
         if (!room || room.gameState !== 'playing' || !userId) return;
 
         const player = room.players[userId];
-        if (!player) return;
+        if (!player || player.status !== 'playing') return;
 
         if (guess.length !== room.settings.wordLength) return;
 
-        const currentGuesses = parseGuesses(player.guesses);
-        const newGuesses = [...currentGuesses, guess];
-        let newScore = player.score;
+        isSubmittingRef.current = true;
+        try {
+            const currentGuesses = parseGuesses(player.guesses);
+            const newGuesses = [...currentGuesses, guess];
+            let newScore = player.score;
 
-        const updateData: Record<string, unknown> = {
-            guesses: JSON.stringify(newGuesses),
-        };
-
-        // First guess time
-        let playerStartTime = player.startTime;
-        if (newGuesses.length === 1 && !playerStartTime) {
-            playerStartTime = Date.now();
-            updateData.startTime = playerStartTime;
-        }
-
-        let gameCompleted = false;
-        let won = false;
-        let finalTime = 0;
-
-        if (guess === room.currentWord) {
-            const endTime = Date.now();
-            const startTime = playerStartTime || room.startTime;
-            const timeTaken = (endTime - startTime) / 1000;
-
-            const attempts = newGuesses.length;
-            const calculatedScore = Math.max(0, 1000 - (attempts * 100) - Math.floor(timeTaken / 2));
-
-            newScore += calculatedScore;
-            updateData.status = 'won';
-            updateData.score = newScore;
-            updateData.endTime = endTime;
-            updateData.timeTaken = timeTaken;
-            updateData.finalScore = calculatedScore;
-            gameCompleted = true;
-            won = true;
-            finalTime = timeTaken;
-        } else if (newGuesses.length >= (room.settings.maxGuesses || 6)) {
-            updateData.status = 'lost';
-            const endTime = Date.now();
-            const startTime = playerStartTime || room.startTime;
-            const timeTaken = (endTime - startTime) / 1000;
-
-            updateData.endTime = endTime;
-            updateData.timeTaken = timeTaken;
-            updateData.finalScore = 0;
-            gameCompleted = true;
-            won = false;
-            finalTime = timeTaken;
-        } else {
-            updateData.status = 'playing';
-        }
-
-        // Update Stats if completed
-        if (gameCompleted) {
-            let gameLang: 'en' | 'he' = room.settings.language || 'en';
-            let gameLength = room.settings.wordLength || 5;
-
-            // Routine adjustment for stats definition
-            if (room.settings.useRoutine && room.settings.dailyRoutine && room.settings.dailyRoutine.length > 0) {
-                const routine = room.settings.dailyRoutine;
-                // The routineIndex is updated *for the next round*, so we look at the one that just finished.
-                const nextGameIndex = room.routineIndex ?? 1;
-                const actualIndex = (nextGameIndex - 1 + routine.length) % routine.length;
-                const currentGame = routine[actualIndex];
-                gameLang = currentGame.language;
-                gameLength = currentGame.wordLength;
-            }
-
-            const gameRecord: GameHistory = {
-                date: Date.now(),
-                language: gameLang,
-                wordLength: gameLength,
-                guessCount: newGuesses.length,
-                timeTaken: finalTime,
-                won
+            const updateData: Record<string, unknown> = {
+                guesses: JSON.stringify(newGuesses),
             };
 
-            // This now handles all persistent stat calculations and achievements
-            updateUserStats(gameRecord);
-        }
+            // First guess time
+            let playerStartTime = player.startTime;
+            if (newGuesses.length === 1 && !playerStartTime) {
+                playerStartTime = Date.now();
+                updateData.startTime = playerStartTime;
+            }
 
-        await safeWrite(async () => update(ref(db, `rooms/${roomId}/players/${userId}`), updateData));
+            let gameCompleted = false;
+            let won = false;
+            let finalTime = 0;
 
-        // Check for Game Over (Everyone finished)
-        // We do this optimistically. If I finished, check if everyone else is done.
-        if (gameCompleted) {
-            checkGameOver();
+            if (guess === room.currentWord) {
+                const endTime = Date.now();
+                const startTime = playerStartTime || room.startTime;
+                const timeTaken = (endTime - startTime) / 1000;
+
+                const attempts = newGuesses.length;
+                const calculatedScore = Math.max(0, 1000 - (attempts * 100) - Math.floor(timeTaken / 2));
+
+                newScore += calculatedScore;
+                updateData.status = 'won';
+                updateData.score = newScore;
+                updateData.endTime = endTime;
+                updateData.timeTaken = timeTaken;
+                updateData.finalScore = calculatedScore;
+                gameCompleted = true;
+                won = true;
+                finalTime = timeTaken;
+            } else if (newGuesses.length >= (room.settings.maxGuesses || 6)) {
+                updateData.status = 'lost';
+                const endTime = Date.now();
+                const startTime = playerStartTime || room.startTime;
+                const timeTaken = (endTime - startTime) / 1000;
+
+                updateData.endTime = endTime;
+                updateData.timeTaken = timeTaken;
+                updateData.finalScore = 0;
+                gameCompleted = true;
+                won = false;
+                finalTime = timeTaken;
+            } else {
+                updateData.status = 'playing';
+            }
+
+            // Update Stats if completed
+            if (gameCompleted) {
+                let gameLang: 'en' | 'he' = room.settings.language || 'en';
+                let gameLength = room.settings.wordLength || 5;
+
+                // Routine adjustment for stats definition
+                if (room.settings.useRoutine && room.settings.dailyRoutine && room.settings.dailyRoutine.length > 0) {
+                    const routine = room.settings.dailyRoutine;
+                    // The routineIndex is updated *for the next round*, so we look at the one that just finished.
+                    const nextGameIndex = room.routineIndex ?? 1;
+                    const actualIndex = (nextGameIndex - 1 + routine.length) % routine.length;
+                    const currentGame = routine[actualIndex];
+                    gameLang = currentGame.language;
+                    gameLength = currentGame.wordLength;
+                }
+
+                const gameRecord: GameHistory = {
+                    date: Date.now(),
+                    language: gameLang,
+                    wordLength: gameLength,
+                    guessCount: newGuesses.length,
+                    timeTaken: finalTime,
+                    won
+                };
+
+                // This now handles all persistent stat calculations and achievements
+                updateUserStats(gameRecord);
+            }
+
+            await safeWrite(async () => update(ref(db, `rooms/${roomId}/players/${userId}`), updateData));
+
+            // Check for Game Over (Everyone finished)
+            // We do this optimistically. If I finished, check if everyone else is done.
+            if (gameCompleted) {
+                checkGameOver();
+            }
+        } finally {
+            isSubmittingRef.current = false;
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [room, roomId, userId, checkGameOver, updateUserStats]);
