@@ -79,43 +79,58 @@ export const useUserStats = (): UseUserStatsReturn => {
 
         const fetchOrCreateProfile = async () => {
             setLoading(true);
-            try {
-                const snapshot = await get(userRef);
+            setError(null); // Reset error state on new attempt
 
-                if (snapshot.exists()) {
-                    setProfile(snapshot.val());
-                } else {
-                    // Try to migrate from localStorage for a smoother transition
-                    const legacyUsername = localStorage.getItem('friendle_username');
+            const MAX_RETRIES = 3;
+            const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-                    const newProfile: UserProfile = {
-                        uid,
-                        username: legacyUsername || `Player-${uid.substring(0, 5)}`,
-                        createdAt: Date.now(),
-                        stats: {
-                            totalGames: 0,
-                            totalWins: 0,
-                            totalLosses: 0,
-                            avgGuesses: 0,
-                            avgTime: 0,
-                            bestTime: null,
-                            currentStreak: 0,
-                            maxStreak: 0,
-                        },
-                        gameHistory: [],
-                        achievements: [],
-                    };
-                    // Use `set` which is idempotent for creation
-                    await set(userRef, newProfile);
-                    setProfile(newProfile);
+            for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+                try {
+                    const snapshot = await get(userRef);
+
+                    if (snapshot.exists()) {
+                        setProfile(snapshot.val());
+                    } else {
+                        // Try to migrate from localStorage for a smoother transition
+                        const legacyUsername = localStorage.getItem('friendle_username');
+
+                        const newProfile: UserProfile = {
+                            uid,
+                            username: legacyUsername || `Player-${uid.substring(0, 5)}`,
+                            createdAt: Date.now(),
+                            stats: {
+                                totalGames: 0,
+                                totalWins: 0,
+                                totalLosses: 0,
+                                avgGuesses: 0,
+                                avgTime: 0,
+                                bestTime: null,
+                                currentStreak: 0,
+                                maxStreak: 0,
+                            },
+                            gameHistory: [],
+                            achievements: [],
+                        };
+                        // Use `set` which is idempotent for creation
+                        await set(userRef, newProfile);
+                        setProfile(newProfile);
+                    }
+
+                    setLoading(false);
+                    return; // Success, exit the function
+                } catch (err) {
+                    console.warn(`Attempt ${attempt} to fetch/create profile failed:`, err);
+                    if (attempt < MAX_RETRIES) {
+                        await sleep(1000 * attempt); // wait 1s, then 2s
+                    } else {
+                        console.error("All attempts to fetch/create user profile failed:", err);
+                        setError("Failed to load user profile.");
+                    }
                 }
-            } catch (err) {
-                console.error("Error fetching/creating user profile:", err);
-                setError("Failed to load user profile.");
-                toast.error("Failed to load your profile.");
-            } finally {
-                setLoading(false);
             }
+
+            // This will only be reached if all retries fail
+            setLoading(false);
         };
 
         fetchOrCreateProfile();
@@ -123,7 +138,10 @@ export const useUserStats = (): UseUserStatsReturn => {
 
     // Function to update stats after a game
     const updateUserStats = useCallback(async (gameResult: GameHistory) => {
-        if (!uid || !profile) return;
+        if (!uid || !profile) {
+            toast.error("Your profile isn't available. Stats cannot be saved.");
+            return;
+        }
 
         if (!db) {
             console.error('Firebase database not initialized. Cannot update user stats.');
@@ -200,7 +218,10 @@ export const useUserStats = (): UseUserStatsReturn => {
 
     // Function to update the username
     const updateUsername = useCallback(async (newUsername: string) => {
-        if (!uid || !profile) return;
+        if (!uid || !profile) {
+            toast.error("Your profile isn't available. Cannot update username.");
+            return;
+        }
         if (newUsername.trim().length < 3 || newUsername.length > 15) {
             toast.error("Username must be between 3 and 15 characters.");
             return;
@@ -225,7 +246,11 @@ export const useUserStats = (): UseUserStatsReturn => {
 
     // Function to add a room to history
     const addRoomToHistory = useCallback(async (roomEntry: RoomHistoryEntry) => {
-        if (!uid || !profile) return;
+        if (!uid || !profile) {
+            // This is a non-critical feature, so we only log it.
+            console.warn("User profile not available. Cannot add room to history.");
+            return;
+        }
 
         if (!db) {
             console.error('Firebase database not initialized. Cannot update room history.');
