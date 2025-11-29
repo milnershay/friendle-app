@@ -85,7 +85,7 @@ describe('Home Page - New Flow', () => {
         fireEvent.click(await screen.findByText('Join'));
 
         await waitFor(() => {
-            expect(pushMock).toHaveBeenCalledWith('/room/VALID6?username=Joiner');
+            expect(pushMock).toHaveBeenCalledWith('/room/VALID6?username=Joiner&language=en');
         });
     });
 
