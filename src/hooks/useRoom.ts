@@ -98,7 +98,7 @@ export const parseStats = (stats?: string): PlayerStats => {
 
 // --- Hook ---
 
-export function useRoom(roomId: string, username: string | null) {
+export function useRoom(roomId: string, username: string | null, preferredLanguage: 'en' | 'he' | null = null) {
     const { isOnline, isConnectedToFirebase } = useConnectionStatus();
     const { user: authUser, loading: authLoading } = useAuth();
     const { updateUserStats } = useUserStats();
@@ -245,6 +245,7 @@ export function useRoom(roomId: string, username: string | null) {
 
             if (!currentRoom) {
                 // Create new room
+                const roomLanguage = preferredLanguage || 'en';
                 const initialRoom: RoomData = {
                     id: roomId,
                     players: {
@@ -259,7 +260,7 @@ export function useRoom(roomId: string, username: string | null) {
                     gameState: 'waiting',
                     currentWord: "",
                     startTime: 0,
-                    settings: { wordLength: 5, customQueue: [], language: 'en', isPublic: true },
+                    settings: { wordLength: 5, customQueue: [], language: roomLanguage, isPublic: true },
                     wordQueue: [],
                     playerCount: 1,
                 };
@@ -278,7 +279,7 @@ export function useRoom(roomId: string, username: string | null) {
             console.error("Error initializing room:", err);
             setError("Failed to join room");
         }
-    }, [roomId, userId, username, joinRoom]);
+    }, [roomId, userId, username, joinRoom, preferredLanguage]);
 
     // Game Actions
     const startGame = useCallback(async () => {

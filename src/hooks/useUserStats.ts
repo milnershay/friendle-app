@@ -62,22 +62,22 @@ export const useUserStats = (): UseUserStatsReturn => {
 
     // Fetch or create user profile on auth change
     useEffect(() => {
-        if (!uid) {
-            setLoading(false);
-            setProfile(null);
-            return;
-        }
-
-        if (!db) {
-            console.error('Firebase database not initialized. Cannot load user profile.');
-            setError('Firebase not configured. Please contact support.');
-            setLoading(false);
-            return;
-        }
-
-        const userRef = ref(db, `users/${uid}`);
+        const userRef = uid ? ref(db, `users/${uid}`) : null;
 
         const fetchOrCreateProfile = async () => {
+            if (!uid) {
+                setLoading(false);
+                setProfile(null);
+                return;
+            }
+
+            if (!db || !userRef) {
+                console.error('Firebase database not initialized. Cannot load user profile.');
+                setError('Firebase not configured. Please contact support.');
+                setLoading(false);
+                return;
+            }
+
             setLoading(true);
             setError(null); // Reset error state on new attempt
 

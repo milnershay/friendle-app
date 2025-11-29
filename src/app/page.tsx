@@ -56,7 +56,7 @@ export default function Home() {
     }
 
     const randomRoomId = availableRooms[Math.floor(Math.random() * availableRooms.length)];
-    router.push(`/room/${randomRoomId}?username=${encodeURIComponent(sanitizedUsername)}`);
+    router.push(`/room/${randomRoomId}?username=${encodeURIComponent(sanitizedUsername)}&language=${language}`);
   };
 
   const handleCreateRoom = () => {
@@ -75,7 +75,7 @@ export default function Home() {
     }
 
     const newRoomId = Math.random().toString(36).substring(2, 8).toUpperCase()
-    router.push(`/room/${newRoomId}?username=${encodeURIComponent(sanitizedUsername)}`)
+    router.push(`/room/${newRoomId}?username=${encodeURIComponent(sanitizedUsername)}&language=${language}`)
   }
 
   const handleRoomCodeSubmit = () => {
@@ -106,7 +106,7 @@ export default function Home() {
         }
     }
 
-    router.push(`/room/${sanitizedRoomId.toUpperCase()}?username=${encodeURIComponent(sanitizedUsername)}`)
+    router.push(`/room/${sanitizedRoomId.toUpperCase()}?username=${encodeURIComponent(sanitizedUsername)}&language=${language}`)
   }
 
   const handleKeyDown = (e: React.KeyboardEvent, action: () => void) => {

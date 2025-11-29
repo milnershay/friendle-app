@@ -16,6 +16,7 @@ export default function RoomPage() {
     const { roomId } = useParams();
     const searchParams = useSearchParams();
     const username = searchParams.get("username");
+    const preferredLanguage = searchParams.get("language") as 'en' | 'he' | null;
     const router = useRouter();
 
     const {
@@ -32,7 +33,7 @@ export default function RoomPage() {
         addCustomWord,
         skipWord,
         leaveRoom
-    } = useRoom(roomId as string, username);
+    } = useRoom(roomId as string, username, preferredLanguage);
 
     const { profile, loading: profileLoading, updateUsername, addRoomToHistory } = useUserStats();
     const [isProfileModalOpen, setProfileModalOpen] = useState(false);
