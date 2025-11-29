@@ -530,6 +530,13 @@ export function useRoom(roomId: string, username: string | null) {
                 currentSuggester: null,
                 players: updatedPlayers
             });
+
+            if (room.settings.isPublic) {
+                await set(ref(db, `public_rooms/${roomId}`), {
+                    playerCount: room.playerCount || 1,
+                    createdAt: Date.now(),
+                });
+            }
         };
 
         await safeWrite(action)
@@ -585,11 +592,29 @@ export function useRoom(roomId: string, username: string | null) {
 
             if (committed) {
                 const newPlayerCount = snapshot.child('playerCount').val();
+                const isPublic = snapshot.child('settings/isPublic').val();
+                const publicRoomRef = ref(db, `public_rooms/${roomId}`);
+
                 if (newPlayerCount === 0) {
+                    // Last player left, clean up everything
                     await remove(roomRef);
-                    await remove(ref(db, `public_rooms/${roomId}`));
-                } else if (snapshot.child('settings/isPublic').val()) {
-                    await update(ref(db, `public_rooms/${roomId}`), { playerCount: newPlayerCount });
+                    await remove(publicRoomRef);
+                } else if (isPublic && newPlayerCount < 8) {
+                    // The room is public and has space. Check if it was already public or just became available.
+                    const publicRoomSnap = await get(publicRoomRef);
+                    if (publicRoomSnap.exists()) {
+                        // It was already public, just update the player count
+                        await update(publicRoomRef, { playerCount: newPlayerCount });
+                    } else {
+                        // It was not public (likely because it was full), so re-add it.
+                        await set(publicRoomRef, {
+                            playerCount: newPlayerCount,
+                            createdAt: Date.now()
+                        });
+                    }
+                } else {
+                    // If the room is private or has become full, ensure it's not in the public list.
+                    await remove(publicRoomRef);
                 }
             }
         };
