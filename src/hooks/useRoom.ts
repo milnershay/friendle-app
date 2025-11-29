@@ -139,7 +139,6 @@ export function useRoom(roomId: string, username: string | null) {
                 if (!currentRoom) {
                     return;
                 }
-                const playerCount = Object.keys(currentRoom.players || {}).length + 1;
                 if (!currentRoom.players) currentRoom.players = {};
                 currentRoom.players[userId] = {
                     id: userId,
@@ -148,7 +147,7 @@ export function useRoom(roomId: string, username: string | null) {
                     status: 'waiting',
                     guesses: JSON.stringify([])
                 };
-                currentRoom.playerCount = playerCount;
+                currentRoom.playerCount = Object.keys(currentRoom.players).length;
                 return currentRoom;
             });
 
