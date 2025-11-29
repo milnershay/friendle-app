@@ -1,9 +1,9 @@
 import { renderHook, act, waitFor } from '@testing-library/react';
 import { useUserStats } from './useUserStats';
 import { useAuth } from './useAuth';
+import { type GameHistory } from './useRoom';
 import { runTransaction, ref, get } from 'firebase/database';
 import toast from 'react-hot-toast';
-import { db } from '@/lib/firebase';
 
 vi.mock('./useAuth');
 vi.mock('firebase/database');
@@ -31,7 +31,7 @@ describe('useUserStats', () => {
     });
 
     it('should queue stats updates when profile is not loaded and process them when it is', async () => {
-        const gameResult1 = { date: Date.now(), won: true, guessCount: 3, timeTaken: 10 };
+        const gameResult1: GameHistory = { date: Date.now(), language: 'en', wordLength: 5, won: true, guessCount: 3, timeTaken: 10 };
         const mockProfile = {
             uid: 'test-uid',
             username: 'test-user',
@@ -74,7 +74,7 @@ describe('useUserStats', () => {
 
         // 3. Call update while profile is loading
         await act(async () => {
-            result.current.updateUserStats(gameResult1 as any);
+            result.current.updateUserStats(gameResult1);
         });
 
         // 4. Assert that queueing mechanism was triggered
@@ -102,8 +102,8 @@ describe('useUserStats', () => {
     });
 
     it('should process multiple queued updates in order', async () => {
-        const gameResult1 = { date: Date.now(), won: true, guessCount: 3, timeTaken: 10 };
-        const gameResult2 = { date: Date.now(), won: false, guessCount: 6, timeTaken: 20 };
+        const gameResult1: GameHistory = { date: Date.now(), language: 'en', wordLength: 5, won: true, guessCount: 3, timeTaken: 10 };
+        const gameResult2: GameHistory = { date: Date.now(), language: 'en', wordLength: 5, won: false, guessCount: 6, timeTaken: 20 };
 
         const mockProfile = {
             uid: 'test-uid',
@@ -142,8 +142,8 @@ describe('useUserStats', () => {
 
         // Queue two updates while loading
         await act(async () => {
-            result.current.updateUserStats(gameResult1 as any);
-            result.current.updateUserStats(gameResult2 as any);
+            result.current.updateUserStats(gameResult1);
+            result.current.updateUserStats(gameResult2);
         });
 
         // Simulate profile loading
