@@ -11,7 +11,7 @@ interface PlayerListProps {
 }
 
 export default function PlayerList({ room, userId, onLeaveRoom, onResetScores, isHost }: PlayerListProps) {
-    const t = useTranslation(room.settings.language || 'en');
+    const t = useTranslation(room.settings?.language || 'en');
     const playerList = Object.values(room.players || {});
     const [showStats, setShowStats] = useState(false);
 
@@ -32,7 +32,7 @@ export default function PlayerList({ room, userId, onLeaveRoom, onResetScores, i
                 </div>
                 <p className="text-slate-400 text-sm flex items-center gap-2">
                     {t.room.roomCode}: <span className="font-mono text-white bg-white/10 px-2 py-1 rounded select-all border border-white/5">{room.id}</span>
-                    {room.settings.useRoutine && room.dailyRound && (
+                    {room.settings?.useRoutine && room.dailyRound && (
                         <span className="text-xs bg-purple-500/20 text-purple-300 px-2 py-1 rounded border border-purple-500/20">
                             Round {room.dailyRound}
                         </span>
@@ -44,7 +44,7 @@ export default function PlayerList({ room, userId, onLeaveRoom, onResetScores, i
             <div className="md:hidden mb-6 p-4 bg-white/5 rounded-xl text-center border border-white/5">
                 <p className="text-slate-400 text-xs uppercase tracking-widest mb-1">{t.room.roomCode}</p>
                 <p className="text-3xl font-mono font-bold select-all tracking-wider">{room.id}</p>
-                {room.settings.useRoutine && room.dailyRound && (
+                {room.settings?.useRoutine && room.dailyRound && (
                     <p className="text-xs text-purple-300 mt-2 bg-purple-500/20 px-2 py-1 rounded inline-block border border-purple-500/20">
                         Round {room.dailyRound}
                     </p>

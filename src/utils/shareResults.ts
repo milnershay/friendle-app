@@ -37,7 +37,7 @@ export function generateShareText(player: Player, room: RoomData): string {
             }).join('')
     ).join('\n');
 
-    const maxGuesses = room.settings.maxGuesses || 6;
+    const maxGuesses = room.settings?.maxGuesses || 6;
     const attempts = player.status === 'won' ? `${guesses.length}/${maxGuesses}` : `X/${maxGuesses}`;
     const time = player.timeTaken ? `in ${player.timeTaken.toFixed(0)}s` : '';
 

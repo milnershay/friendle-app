@@ -27,7 +27,7 @@ export default function RoomLobby({
     onRemoveFromRoutine,
     loading
 }: RoomLobbyProps) {
-    const t = useTranslation(room.settings.language || 'en');
+    const t = useTranslation(room.settings?.language || 'en');
     const [newWord, setNewWord] = useState("");
     const [routineLang, setRoutineLang] = useState<'en' | 'he'>('en');
     const [routineLength, setRoutineLength] = useState<4 | 5 | 6>(5);
@@ -36,8 +36,8 @@ export default function RoomLobby({
         const trimmedWord = newWord.trim().toUpperCase();
         if (!trimmedWord) return;
 
-        if (trimmedWord.length !== room.settings.wordLength) {
-            toast.error(`Word must be ${room.settings.wordLength} letters long.`);
+        if (trimmedWord.length !== (room.settings?.wordLength || 5)) {
+            toast.error(`Word must be ${room.settings?.wordLength || 5} letters long.`);
             return;
         }
 

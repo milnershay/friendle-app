@@ -14,7 +14,7 @@ interface ResultsViewProps {
 }
 
 export default function ResultsView({ room, userId, onClose, onStartGame, onResetRound }: ResultsViewProps) {
-    const t = useTranslation(room.settings.language || 'en');
+    const t = useTranslation(room.settings?.language || 'en');
     const playerList = Object.values(room.players || {});
     const [isShareModalOpen, setIsShareModalOpen] = useState(false);
     const [shareText, setShareText] = useState("");

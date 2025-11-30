@@ -9,7 +9,7 @@ interface GameViewProps {
 }
 
 export default function GameView({ room, myPlayer, onGuess }: GameViewProps) {
-    const t = useTranslation(room.settings.language || 'en');
+    const t = useTranslation(room.settings?.language || 'en');
 
     return (
         <div className="w-full max-w-lg flex flex-col items-center">
@@ -46,8 +46,8 @@ export default function GameView({ room, myPlayer, onGuess }: GameViewProps) {
                     return 'finished';
                 })()}
                 guesses={parseGuesses(myPlayer?.guesses)}
-                language={room.settings.language || 'en'}
-                wordLength={room.currentWord ? room.currentWord.length : (room.settings.wordLength || 5)}
+                language={room.settings?.language || 'en'}
+                wordLength={room.currentWord ? room.currentWord.length : (room.settings?.wordLength || 5)}
             />
         </div>
     );
