@@ -16,6 +16,7 @@ export default function Home() {
   const [username, setUsername] = useState("")
   const [roomCode, setRoomCode] = useState("")
   const [step, setStep] = useState(0) // 0: Choose Action, 1: Create Room, 2: Join with Code, 3: Join with Code (Username), 4: Join Random (Username)
+  const [noRoomsAvailable, setNoRoomsAvailable] = useState(false);
   const [language, setLanguage] = useState<Language>('en')
   const t = useTranslation(language)
 
@@ -30,6 +31,7 @@ export default function Home() {
   };
 
   const handleUsernameForRandomJoin = () => {
+    setNoRoomsAvailable(false);
     const sanitizedUsername = sanitizeText(username)
     const usernameValidation = validateUsername(sanitizedUsername)
     if (!usernameValidation.valid) {
@@ -46,13 +48,15 @@ export default function Home() {
     const publicRooms = snapshot.val();
 
     if (!publicRooms) {
-      return toast.error("No public rooms available. Why not create one?");
+      setNoRoomsAvailable(true);
+      return;
     }
 
     const availableRooms = Object.keys(publicRooms).filter(roomId => publicRooms[roomId].playerCount < 8);
 
     if (availableRooms.length === 0) {
-      return toast.error("No available rooms. Why not create one?");
+      setNoRoomsAvailable(true);
+      return;
     }
 
     const randomRoomId = availableRooms[Math.floor(Math.random() * availableRooms.length)];
@@ -333,6 +337,12 @@ export default function Home() {
                   autoFocus
                 />
               </div>
+              {noRoomsAvailable && (
+                <div className="text-center bg-red-500/10 border border-red-500/20 text-red-300 text-xs rounded-lg p-3 animate-in fade-in duration-300">
+                  <p className="font-bold">{t.home.noRoomsTitle}</p>
+                  <p className="text-red-300/80">{t.home.noRoomsSubtitle}</p>
+                </div>
+              )}
               <Button
                 onClick={handleUsernameForRandomJoin}
                 className="w-full bg-white text-slate-950 hover:bg-slate-200 font-bold text-lg h-14 rounded-xl shadow-lg transition-all duration-300"

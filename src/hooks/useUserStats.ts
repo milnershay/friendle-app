@@ -3,9 +3,9 @@
 import { useState, useEffect, useCallback } from "react";
 import toast from "react-hot-toast";
 import { db } from "@/lib/firebase";
-import { ref, set, get, update } from "firebase/database";
+import { ref, set, get, update, runTransaction } from "firebase/database";
 import { useAuth } from "./useAuth";
-import type { GameHistory } from "./useRoom"; // Using 'type' for type-only import
+import type { GameHistory } from "./useRoom";
 
 // --- Types ---
 
@@ -59,8 +59,95 @@ export const useUserStats = (): UseUserStatsReturn => {
     const [profile, setProfile] = useState<UserProfile | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [pendingStats, setPendingStats] = useState<GameHistory[]>([]);
 
-    // Fetch or create user profile on auth change
+    const processStatsUpdate = useCallback(async (gameResult: GameHistory) => {
+        if (!uid) return;
+
+        console.log("Processing stats for user:", uid, "Game result:", gameResult);
+        const userRef = ref(db, `users/${uid}`);
+
+        try {
+            const { committed, snapshot } = await runTransaction(userRef, (currentProfile: UserProfile | null) => {
+                if (currentProfile === null) {
+                    return;
+                }
+
+                const newStats = { ...currentProfile.stats };
+                const newHistory = [gameResult, ...currentProfile.gameHistory];
+
+                newStats.totalGames += 1;
+                newStats.totalWins += gameResult.won ? 1 : 0;
+                newStats.totalLosses += gameResult.won ? 0 : 1;
+
+                const totalGames = newStats.totalGames;
+                newStats.avgGuesses = ((newStats.avgGuesses * (totalGames - 1)) + gameResult.guessCount) / totalGames;
+                newStats.avgTime = ((newStats.avgTime * (totalGames - 1)) + gameResult.timeTaken) / totalGames;
+
+                if (gameResult.won && (newStats.bestTime === null || gameResult.timeTaken < newStats.bestTime)) {
+                    newStats.bestTime = gameResult.timeTaken;
+                }
+
+                if (gameResult.won) {
+                    newStats.currentStreak += 1;
+                    newStats.maxStreak = Math.max(newStats.maxStreak, newStats.currentStreak);
+                } else {
+                    newStats.currentStreak = 0;
+                }
+
+                if (newHistory.length > 50) {
+                    newHistory.pop();
+                }
+
+                const currentAchievements = new Set(currentProfile.achievements);
+                const checkAndAdd = (id: string) => !currentAchievements.has(id) && currentAchievements.add(id);
+
+                if (gameResult.won) checkAndAdd('first_win');
+                if (newStats.currentStreak >= 5) checkAndAdd('5_win_streak');
+                if (newStats.totalGames >= 10) checkAndAdd('10_games_played');
+                if (gameResult.won && gameResult.guessCount === 1) checkAndAdd('perfect_game');
+                if (gameResult.won && gameResult.timeTaken < 30) checkAndAdd('speed_demon');
+
+                const newAchievementsArray = Array.from(currentAchievements);
+
+                return {
+                    ...currentProfile,
+                    stats: newStats,
+                    gameHistory: newHistory,
+                    achievements: newAchievementsArray,
+                };
+            });
+
+            if (committed) {
+                const newProfile = snapshot.val();
+                const oldAchievements = profile?.achievements ?? [];
+                const unlockedAchievements = newProfile.achievements.filter((ach: string) => !oldAchievements.includes(ach));
+
+                setProfile(newProfile);
+                toast.dismiss("stats-saving");
+                toast.success("Game stats saved!");
+
+                unlockedAchievements.forEach((ach: string) => {
+                    toast.success(`Achievement Unlocked: ${ach.replace(/_/g, ' ')}!`);
+                });
+            }
+        } catch (err) {
+            console.error("Error updating stats:", err);
+            toast.error("Failed to save stats. Retrying in 3 seconds...");
+            setTimeout(() => {
+                setPendingStats(prev => [gameResult, ...prev]);
+            }, 3000);
+        }
+    }, [uid, profile]);
+
+    useEffect(() => {
+        if (profile && pendingStats.length > 0) {
+            const statsToProcess = pendingStats[0];
+            setPendingStats(prev => prev.slice(1));
+            processStatsUpdate(statsToProcess);
+        }
+    }, [profile, pendingStats, processStatsUpdate]);
+
     useEffect(() => {
         const userRef = uid ? ref(db, `users/${uid}`) : null;
 
@@ -136,85 +223,20 @@ export const useUserStats = (): UseUserStatsReturn => {
         fetchOrCreateProfile();
     }, [uid]);
 
-    // Function to update stats after a game
     const updateUserStats = useCallback(async (gameResult: GameHistory) => {
-        if (!uid || !profile) {
-            toast.error("Your profile isn't available. Stats cannot be saved.");
+        if (!uid) {
+            console.warn("updateUserStats called without a user ID.");
             return;
         }
 
-        if (!db) {
-            console.error('Firebase database not initialized. Cannot update user stats.');
-            return;
-        }
-
-        const userRef = ref(db, `users/${uid}`);
-
-        // Create deep copies to avoid direct state mutation
-        const newStats = { ...profile.stats };
-        const newHistory = [gameResult, ...profile.gameHistory];
-
-        // --- Stat Calculations ---
-        newStats.totalGames += 1;
-        newStats.totalWins += gameResult.won ? 1 : 0;
-        newStats.totalLosses += gameResult.won ? 0 : 1;
-
-        // Averages (ensure not to divide by zero on the first game)
-        const totalGames = newStats.totalGames;
-        newStats.avgGuesses = ((newStats.avgGuesses * (totalGames - 1)) + gameResult.guessCount) / totalGames;
-        newStats.avgTime = ((newStats.avgTime * (totalGames - 1)) + gameResult.timeTaken) / totalGames;
-
-        // Best time (only for wins)
-        if (gameResult.won && (newStats.bestTime === null || gameResult.timeTaken < newStats.bestTime)) {
-            newStats.bestTime = gameResult.timeTaken;
-        }
-
-        // Streaks
-        if (gameResult.won) {
-            newStats.currentStreak += 1;
-            newStats.maxStreak = Math.max(newStats.maxStreak, newStats.currentStreak);
+        if (profile) {
+            await processStatsUpdate(gameResult);
         } else {
-            newStats.currentStreak = 0;
+            console.log("Profile not loaded. Queuing stats update.");
+            toast.loading("Saving stats...", { id: "stats-saving" });
+            setPendingStats(prev => [...prev, gameResult]);
         }
-
-        // Game history (capped at 50)
-        if (newHistory.length > 50) {
-            newHistory.pop();
-        }
-
-        // --- Achievements ---
-        const currentAchievements = new Set(profile.achievements);
-        const checkAndAdd = (id: string) => !currentAchievements.has(id) && currentAchievements.add(id);
-
-        if (gameResult.won) checkAndAdd('first_win');
-        if (newStats.currentStreak >= 5) checkAndAdd('5_win_streak');
-        if (newStats.totalGames >= 10) checkAndAdd('10_games_played');
-        if (gameResult.won && gameResult.guessCount === 1) checkAndAdd('perfect_game');
-        if (gameResult.won && gameResult.timeTaken < 30) checkAndAdd('speed_demon');
-
-        const newAchievementsArray = Array.from(currentAchievements);
-        const unlockedAchievements = newAchievementsArray.filter(ach => !profile.achievements.includes(ach));
-
-        try {
-            const updates = {
-                stats: newStats,
-                gameHistory: newHistory,
-                achievements: newAchievementsArray,
-            };
-            await update(userRef, updates);
-
-            // Optimistically update local state
-            setProfile(prev => prev ? { ...prev, ...updates } : null);
-
-            // Notify user of new achievements
-            unlockedAchievements.forEach(ach => {
-                toast.success(`Achievement Unlocked: ${ach.replace(/_/g, ' ')}!`);
-            });
-        } catch (err) {
-            console.error("Error updating stats:", err);
-            toast.error("Failed to save your game stats.");
-        }
-    }, [uid, profile]);
+    }, [uid, profile, processStatsUpdate]);
 
     // Function to update the username
     const updateUsername = useCallback(async (newUsername: string) => {
