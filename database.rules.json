@@ -9,7 +9,19 @@
         ".write": "!data.exists() || (data.exists() && newData.exists())",
 
         // Validate room structure
-        ".validate": "newData.hasChildren(['id', 'players', 'gameState', 'settings'])",
+        ".validate": "newData.hasChildren(['settings', 'gameState', 'players'])",
+        "settings": {
+          ".validate": "newData.hasChildren(['wordLength', 'language', 'isPublic'])",
+          "wordLength": {
+            ".validate": "newData.isNumber() && newData.val() >= 4 && newData.val() <= 6"
+          },
+          "language": {
+            ".validate": "newData.isString() && (newData.val() === 'en' || newData.val() === 'he')"
+          },
+          "isPublic": {
+            ".validate": "newData.isBoolean()"
+          }
+        },
 
         "id": {
           ".validate": "newData.isString() && newData.val() === $roomId"
@@ -29,26 +41,6 @@
 
         "startTime": {
           ".validate": "newData.isNumber()"
-        },
-
-        "settings": {
-          ".validate": "newData.hasChildren(['wordLength', 'language'])",
-
-          "wordLength": {
-            ".validate": "newData.isNumber() && newData.val() >= 4 && newData.val() <= 6"
-          },
-
-          "language": {
-            ".validate": "newData.isString() && (newData.val() === 'en' || newData.val() === 'he')"
-          },
-
-          "customQueue": {
-            ".validate": "newData.isString() || !newData.exists()"
-          },
-
-          "maxGuesses": {
-            ".validate": "newData.isNumber() && newData.val() >= 4 && newData.val() <= 10"
-          }
         },
 
         "wordQueue": {

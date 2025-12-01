@@ -6,6 +6,7 @@ import { useAuth } from "./useAuth";
 import { useUserStats } from "./useUserStats";
 import { ref, onValue, set, update, get, remove, runTransaction, onDisconnect } from "firebase/database";
 import { WORD_LISTS } from "@/lib/wordLists";
+import { sanitizeRoomData } from "@/lib/validateRoom";
 
 // --- Types (Moved from page.tsx) ---
 
@@ -188,7 +189,7 @@ export function useRoom(roomId: string, username: string | null, preferredLangua
         const unsubscribe = onValue(roomRef, (snapshot) => {
             setRoomLoading(false);
             if (snapshot.exists()) {
-                const data = snapshot.val() as RoomData;
+                const data = sanitizeRoomData(snapshot.val()) as RoomData;
 
                 // Player join/leave notifications
                 if (prevPlayersRef.current && userId) {
@@ -260,7 +261,13 @@ export function useRoom(roomId: string, username: string | null, preferredLangua
                     gameState: 'waiting',
                     currentWord: "",
                     startTime: 0,
-                    settings: { wordLength: 5, customQueue: [], language: roomLanguage, isPublic: true },
+                    // This ensures the settings object is always present on creation, satisfying security rules.
+                    settings: {
+                        wordLength: 5,
+                        customQueue: [],
+                        language: roomLanguage,
+                        isPublic: true
+                    },
                     wordQueue: [],
                     playerCount: 1,
                 };
