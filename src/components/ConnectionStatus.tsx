@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { useConnectionStatus } from '@/hooks/useConnectionStatus';
 
 /**
@@ -9,12 +10,21 @@ import { useConnectionStatus } from '@/hooks/useConnectionStatus';
  */
 function ConnectionStatus() {
   const { isOnline, isConnectedToFirebase } = useConnectionStatus();
+  const [hasConnectedOnce, setHasConnectedOnce] = useState(false);
+
+  useEffect(() => {
+    // Track if we have ever successfully connected to Firebase.
+    // This prevents the banner from showing on initial load.
+    if (isConnectedToFirebase) {
+      setHasConnectedOnce(true);
+    }
+  }, [isConnectedToFirebase]);
 
   // We are offline if the browser says so OR if Firebase is disconnected.
-  // Firebase can be disconnected even if the browser thinks it's online (e.g., firewall).
   const isEffectivelyOffline = !isOnline || !isConnectedToFirebase;
 
-  if (!isEffectivelyOffline) {
+  // Only show the banner if we've connected at least once before.
+  if (!hasConnectedOnce || !isEffectivelyOffline) {
     return null;
   }
 

@@ -13,38 +13,20 @@ import { db } from '@/lib/firebase';
  */
 export function useConnectionStatus() {
   const [isOnline, setIsOnline] = useState(typeof navigator !== 'undefined' ? navigator.onLine : true);
-  const [isConnectedToFirebase, setIsConnectedToFirebase] = useState(true);
-  const [hasConnectedOnce, setHasConnectedOnce] = useState(!db); // Skip waiting if no Firebase
-
+  const [isConnectedToFirebase, setIsConnectedToFirebase] = useState(false);
   useEffect(() => {
-    // Listen for browser online/offline events
     const handleOnline = () => setIsOnline(true);
     const handleOffline = () => setIsOnline(false);
 
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
 
-    // Monitor Firebase connection state only if db is available
-    if (!db) {
-      console.warn('Firebase database not initialized. Connection monitoring disabled.');
-      return () => {
-        window.removeEventListener('online', handleOnline);
-        window.removeEventListener('offline', handleOffline);
-      };
-    }
-
+    // Monitor Firebase connection state
     const connectedRef = ref(db, '.info/connected');
     const unsubscribe = onValue(connectedRef, (snap) => {
-      const connected = snap.val() === true;
-      setIsConnectedToFirebase(connected);
-
-      // Once we've connected successfully, track it
-      if (connected) {
-        setHasConnectedOnce(true);
-      }
+      setIsConnectedToFirebase(snap.val() === true);
     });
 
-    // Cleanup listeners on component unmount
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
@@ -52,9 +34,5 @@ export function useConnectionStatus() {
     };
   }, []);
 
-  // Only report as offline after we've connected at least once
-  // This prevents the yellow bar from showing during initial connection
-  const isEffectivelyConnected = hasConnectedOnce ? (isOnline && isConnectedToFirebase) : true;
-
-  return { isOnline, isConnectedToFirebase: isEffectivelyConnected };
+  return { isOnline, isConnectedToFirebase };
 }
