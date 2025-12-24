@@ -35,6 +35,7 @@ export interface UserProfile {
     gameHistory: GameHistory[]; // last 50
     achievements: string[];
     roomHistory?: RoomHistoryEntry[]; // last 10 rooms
+    activeRoom?: string; // Current room the user is in (ensures single-room constraint)
 }
 
 export interface UseUserStatsReturn {

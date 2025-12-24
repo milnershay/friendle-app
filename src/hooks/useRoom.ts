@@ -134,6 +134,33 @@ export function useRoom(roomId: string, username: string | null, preferredLangua
     const joinRoom = useCallback(async () => {
         if (!userId || !username) return;
         const action = async () => {
+            // Check if user is already in another room
+            const userRef = ref(db, `users/${userId}`);
+            const userSnapshot = await get(userRef);
+            const userData = userSnapshot.val();
+
+            if (userData?.activeRoom && userData.activeRoom !== roomId) {
+                // User is in a different room - leave it first
+                const oldRoomRef = ref(db, `rooms/${userData.activeRoom}`);
+                await runTransaction(oldRoomRef, (oldRoom) => {
+                    if (!oldRoom) return;
+                    if (oldRoom.players && oldRoom.players[userId]) {
+                        delete oldRoom.players[userId];
+                    }
+                    oldRoom.playerCount = Object.keys(oldRoom.players || {}).length;
+                    return oldRoom;
+                });
+
+                // Clean up old room if empty
+                const oldRoomSnapshot = await get(oldRoomRef);
+                const oldRoomData = oldRoomSnapshot.val();
+                if (oldRoomData && oldRoomData.playerCount === 0) {
+                    await remove(oldRoomRef);
+                    await remove(ref(db, `public_rooms/${userData.activeRoom}`));
+                }
+            }
+
+            // Join the new room
             const roomRef = ref(db, `rooms/${roomId}`);
             const { committed, snapshot } = await runTransaction(roomRef, (currentRoom) => {
                 if (!currentRoom) {
@@ -152,6 +179,9 @@ export function useRoom(roomId: string, username: string | null, preferredLangua
             });
 
             if (committed) {
+                // Update user's activeRoom field
+                await update(userRef, { activeRoom: roomId });
+
                 const newPlayerCount = snapshot.child('playerCount').val();
                 if (newPlayerCount >= 8) {
                     await remove(ref(db, `public_rooms/${roomId}`));
@@ -169,23 +199,31 @@ export function useRoom(roomId: string, username: string | null, preferredLangua
 
         const roomRef = ref(db, `rooms/${roomId}`);
         const myPlayerRef = ref(db, `rooms/${roomId}/players/${userId}`);
+        const userActiveRoomRef = ref(db, `users/${userId}/activeRoom`);
         const connectedRef = ref(db, '.info/connected');
 
         onValue(connectedRef, (snap) => {
             if (snap.val() === true) {
-                // We're connected. Set up our presence state.
-                const con = onDisconnect(myPlayerRef);
-                con.update({ online: false });
+                // We're connected. Set up disconnect handlers.
+                // When the client disconnects, remove them from the room
+                const playerDisconnect = onDisconnect(myPlayerRef);
+                playerDisconnect.remove();
+
+                // Also clear their activeRoom field
+                const activeRoomDisconnect = onDisconnect(userActiveRoomRef);
+                activeRoomDisconnect.remove();
+
+                // Set online status to true while connected
                 update(myPlayerRef, { online: true });
-                // NOTE: While this handles marking a player as 'offline', client-side `onDisconnect`
-                // is not reliable enough for critical cleanup. For example, if a user closes their
-                // browser, we can't decrement `playerCount` or clean up the public room listing here.
-                // A robust solution would use a server-side process (e.g., Cloud Functions)
-                // to handle disconnects and ensure data integrity.
+
+                // NOTE: This approach removes the player on disconnect, but we can't
+                // reliably update playerCount or clean up empty rooms client-side.
+                // The periodic cleanup API (at /api/cleanup) will handle empty room cleanup.
+                // For production, use Cloud Functions with onDisconnect triggers.
             }
         });
 
-        const unsubscribe = onValue(roomRef, (snapshot) => {
+        const unsubscribe = onValue(roomRef, async (snapshot) => {
             setRoomLoading(false);
             if (snapshot.exists()) {
                 const data = snapshot.val() as RoomData;
@@ -210,6 +248,20 @@ export function useRoom(roomId: string, username: string | null, preferredLangua
                             toast(`${prevPlayers[id].username} has left the room.`);
                         }
                     });
+
+                    // Update playerCount if it's out of sync
+                    const actualPlayerCount = currentPlayerIds.length;
+                    if (data.playerCount !== actualPlayerCount) {
+                        // Fix playerCount to match actual player list
+                        await update(roomRef, { playerCount: actualPlayerCount });
+
+                        // If room is now empty, clean it up
+                        if (actualPlayerCount === 0) {
+                            await remove(roomRef);
+                            await remove(ref(db, `public_rooms/${roomId}`));
+                            return; // Exit early since room no longer exists
+                        }
+                    }
                 }
 
                 setRoom(data);
@@ -238,12 +290,38 @@ export function useRoom(roomId: string, username: string | null, preferredLangua
     const initializeRoom = useCallback(async () => {
         if (!userId || !username) return;
         const roomRef = ref(db, `rooms/${roomId}`);
+        const userRef = ref(db, `users/${userId}`);
 
         try {
             const snapshot = await get(roomRef);
             const currentRoom = snapshot.val();
 
             if (!currentRoom) {
+                // Check if user is in another room
+                const userSnapshot = await get(userRef);
+                const userData = userSnapshot.val();
+
+                if (userData?.activeRoom && userData.activeRoom !== roomId) {
+                    // User is in a different room - leave it first
+                    const oldRoomRef = ref(db, `rooms/${userData.activeRoom}`);
+                    await runTransaction(oldRoomRef, (oldRoom) => {
+                        if (!oldRoom) return;
+                        if (oldRoom.players && oldRoom.players[userId]) {
+                            delete oldRoom.players[userId];
+                        }
+                        oldRoom.playerCount = Object.keys(oldRoom.players || {}).length;
+                        return oldRoom;
+                    });
+
+                    // Clean up old room if empty
+                    const oldRoomSnapshot = await get(oldRoomRef);
+                    const oldRoomData = oldRoomSnapshot.val();
+                    if (oldRoomData && oldRoomData.playerCount === 0) {
+                        await remove(oldRoomRef);
+                        await remove(ref(db, `public_rooms/${userData.activeRoom}`));
+                    }
+                }
+
                 // Create new room
                 const roomLanguage = preferredLanguage || 'en';
                 const initialRoom: RoomData = {
@@ -269,6 +347,8 @@ export function useRoom(roomId: string, username: string | null, preferredLangua
                     playerCount: 1,
                     createdAt: Date.now(),
                 });
+                // Update user's activeRoom field
+                await update(userRef, { activeRoom: roomId });
             } else {
                 // Join existing room
                 if (!currentRoom.players || !currentRoom.players[userId]) {
@@ -581,6 +661,8 @@ export function useRoom(roomId: string, username: string | null, preferredLangua
         if (!userId) return;
         const action = async () => {
             const roomRef = ref(db, `rooms/${roomId}`);
+            const userRef = ref(db, `users/${userId}`);
+
             const { committed, snapshot } = await runTransaction(roomRef, (currentRoom) => {
                 if (!currentRoom) return;
 
@@ -592,6 +674,9 @@ export function useRoom(roomId: string, username: string | null, preferredLangua
             });
 
             if (committed) {
+                // Clear user's activeRoom field
+                await update(userRef, { activeRoom: null });
+
                 const newPlayerCount = snapshot.child('playerCount').val();
                 const isPublic = snapshot.child('settings/isPublic').val();
                 const publicRoomRef = ref(db, `public_rooms/${roomId}`);
