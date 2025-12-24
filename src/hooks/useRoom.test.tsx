@@ -20,7 +20,10 @@ vi.mock('firebase/database', async () => {
         update: vi.fn().mockResolvedValue(undefined),
         get: vi.fn().mockResolvedValue({ val: () => null }),
         remove: vi.fn(),
-        onDisconnect: vi.fn(() => ({ update: vi.fn() })),
+        onDisconnect: vi.fn(() => ({
+            update: vi.fn(),
+            remove: vi.fn()
+        })),
     };
 });
 
