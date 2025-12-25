@@ -26,7 +26,11 @@ function buildConfigErrorMessage(): string {
     const present: string[] = [];
 
     Object.entries(firebaseConfig).forEach(([key, value]) => {
-        const envName = `NEXT_PUBLIC_FIREBASE_${key.replace(/([A-Z])/g, '_$1').toUpperCase()}`;
+        // Convert camelCase to UPPER_SNAKE_CASE (e.g., databaseURL -> DATABASE_URL)
+        const envName = `NEXT_PUBLIC_FIREBASE_${key
+            .replace(/([A-Z]+)/g, '_$1')
+            .replace(/^_/, '')
+            .toUpperCase()}`;
         if (!value) {
             missing.push(envName);
         } else {
@@ -89,7 +93,11 @@ if (typeof window !== 'undefined') {
         console.error(errorMessage);
 
         // Store the error for later display
-        initializationError = new Error('Firebase configuration missing - check console for details');
+        initializationError = new Error(
+            'FATAL: Firebase configuration missing. ' +
+            'Required: NEXT_PUBLIC_FIREBASE_API_KEY, NEXT_PUBLIC_FIREBASE_DATABASE_URL, NEXT_PUBLIC_FIREBASE_PROJECT_ID. ' +
+            `Missing: ${!firebaseConfig.apiKey ? 'API_KEY ' : ''}${!firebaseConfig.databaseURL ? 'DATABASE_URL ' : ''}${!firebaseConfig.projectId ? 'PROJECT_ID ' : ''}`
+        );
 
         // Show alert in development
         if (process.env.NODE_ENV === 'development') {
@@ -99,12 +107,8 @@ if (typeof window !== 'undefined') {
             }, 1000);
         }
 
-        // Throw error to make it visible in error boundaries and crash reports
-        throw new Error(
-            'FATAL: Firebase configuration missing. ' +
-            'Required: NEXT_PUBLIC_FIREBASE_API_KEY, NEXT_PUBLIC_FIREBASE_DATABASE_URL, NEXT_PUBLIC_FIREBASE_PROJECT_ID. ' +
-            `Missing: ${!firebaseConfig.apiKey ? 'API_KEY ' : ''}${!firebaseConfig.databaseURL ? 'DATABASE_URL ' : ''}${!firebaseConfig.projectId ? 'PROJECT_ID ' : ''}`
-        );
+        // Don't throw here - let the error be caught when Firebase is actually used
+        // This allows the module to load and show better error messages at usage time
     } else {
         try {
             const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
@@ -139,8 +143,8 @@ if (typeof window !== 'undefined') {
             console.error('  - Project ID:', firebaseConfig.projectId || '✗ Missing');
             console.error('='.repeat(80) + '\n');
 
-            // Throw to make it visible
-            throw new Error(`Firebase initialization failed: ${error instanceof Error ? error.message : String(error)}`);
+            // Don't throw here - let the error be caught when Firebase is actually used
+            // This allows the module to load and show better error messages at usage time
         }
     }
 }
@@ -167,9 +171,10 @@ export const getInitializationError = (): Error | null => {
  */
 export const getDb = (): Database => {
     if (!db || initializationError) {
-        const errorMsg = initializationError
-            ? `Firebase initialization failed: ${initializationError.message}`
-            : 'Firebase database not initialized. Check your environment variables.';
+        let errorMsg = 'Firebase database not initialized. Check your environment variables.';
+        if (initializationError && initializationError.message) {
+            errorMsg = `Firebase initialization failed: ${initializationError.message}`;
+        }
 
         console.error('\n' + '='.repeat(80));
         console.error('❌ Attempted to use Firebase database before initialization!');
@@ -193,9 +198,10 @@ export const getDb = (): Database => {
  */
 export const getAuth_ = (): Auth => {
     if (!auth || initializationError) {
-        const errorMsg = initializationError
-            ? `Firebase initialization failed: ${initializationError.message}`
-            : 'Firebase auth not initialized. Check your environment variables.';
+        let errorMsg = 'Firebase auth not initialized. Check your environment variables.';
+        if (initializationError && initializationError.message) {
+            errorMsg = `Firebase initialization failed: ${initializationError.message}`;
+        }
 
         console.error('\n' + '='.repeat(80));
         console.error('❌ Attempted to use Firebase auth before initialization!');
