@@ -43,6 +43,10 @@ export default function Home() {
   };
 
   const handleJoinRandomRoom = async (sanitizedUsername: string) => {
+    if (!db) {
+      toast.error('Firebase is not initialized. Please check your configuration.');
+      return;
+    }
     const publicRoomsRef = ref(db, 'public_rooms');
     const snapshot = await get(publicRoomsRef);
     const publicRooms = snapshot.val();
