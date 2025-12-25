@@ -19,8 +19,11 @@ const firebaseConfig = {
 const hasFirebaseConfig = firebaseConfig.apiKey && firebaseConfig.projectId && firebaseConfig.databaseURL;
 
 // Initialize Firebase only if config exists and on client-side
-let db: Database | undefined;
-let auth: Auth | undefined;
+// Note: These are typed as non-nullable for TypeScript compatibility,
+// but may be undefined at runtime if config is missing. Always check
+// isFirebaseInitialized() or use getDb()/getAuth_() before using.
+let db: Database = null as unknown as Database;
+let auth: Auth = null as unknown as Auth;
 
 if (typeof window !== 'undefined') {
     if (!hasFirebaseConfig) {

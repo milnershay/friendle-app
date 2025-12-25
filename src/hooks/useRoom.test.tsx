@@ -27,6 +27,15 @@ vi.mock('firebase/database', async () => {
     };
 });
 
+// Mock the firebase lib to provide initialized db and auth
+vi.mock('@/lib/firebase', () => ({
+    db: {}, // Mock database object
+    auth: {}, // Mock auth object
+    isFirebaseInitialized: () => true,
+    getDb: () => ({}),
+    getAuth_: () => ({})
+}));
+
 // Mock hooks
 vi.mock('./useAuth', () => ({
     useAuth: () => ({ user: { uid: 'user1' }, loading: false })
