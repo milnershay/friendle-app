@@ -133,6 +133,11 @@ export function useRoom(roomId: string, username: string | null, preferredLangua
 
     const joinRoom = useCallback(async () => {
         if (!userId || !username) return;
+        if (!db) {
+            setError("Firebase is not initialized. Please check your configuration.");
+            toast.error("Unable to connect to Firebase.");
+            return;
+        }
         const action = async () => {
             // Check if user is already in another room
             const userRef = ref(db, `users/${userId}`);
@@ -196,6 +201,12 @@ export function useRoom(roomId: string, username: string | null, preferredLangua
     // Subscribe to Room Updates & Presence
     useEffect(() => {
         if (!userId || !username) return;
+
+        if (!db) {
+            setError("Firebase is not initialized. Please check your configuration.");
+            setRoomLoading(false);
+            return;
+        }
 
         const roomRef = ref(db, `rooms/${roomId}`);
         const myPlayerRef = ref(db, `rooms/${roomId}/players/${userId}`);
@@ -289,6 +300,12 @@ export function useRoom(roomId: string, username: string | null, preferredLangua
     // Join/Create Room Logic
     const initializeRoom = useCallback(async () => {
         if (!userId || !username) return;
+        if (!db) {
+            setError("Firebase is not initialized. Please check your configuration.");
+            setRoomLoading(false);
+            toast.error("Unable to connect to Firebase. Please check your internet connection.");
+            return;
+        }
         const roomRef = ref(db, `rooms/${roomId}`);
         const userRef = ref(db, `users/${userId}`);
 

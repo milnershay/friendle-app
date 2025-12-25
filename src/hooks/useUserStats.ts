@@ -64,6 +64,10 @@ export const useUserStats = (): UseUserStatsReturn => {
 
     const processStatsUpdate = useCallback(async (gameResult: GameHistory) => {
         if (!uid) return;
+        if (!db) {
+            console.error("Cannot update stats: Firebase not initialized");
+            return;
+        }
 
         console.log("Processing stats for user:", uid, "Game result:", gameResult);
         const userRef = ref(db, `users/${uid}`);
