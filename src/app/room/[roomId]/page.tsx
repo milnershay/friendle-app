@@ -43,10 +43,11 @@ export default function RoomPage() {
 
     // Reset dismissed state when game state changes
     useEffect(() => {
-        if (room?.gameState === 'waiting' || room?.gameState === 'playing') {
+        if ((room?.gameState === 'waiting' || room?.gameState === 'playing') && resultsDismissed) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect
             setResultsDismissed(false);
         }
-    }, [room?.gameState]);
+    }, [room?.gameState, resultsDismissed]);
 
     const showResults = room?.gameState === 'finished' && !resultsDismissed;
     const t = useTranslation(room?.settings?.language || 'en');

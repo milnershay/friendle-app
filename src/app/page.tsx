@@ -18,11 +18,15 @@ function HomeContent() {
   const t = useTranslation(language)
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLanguage(getStoredLanguage());
+  }, []);
 
+  useEffect(() => {
     // Check for ?join= parameter to pre-fill room code
     const joinCode = searchParams.get('join');
     if (joinCode) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setRoomCode(joinCode.toUpperCase());
       setStep(3); // Go directly to username entry
     }
@@ -135,10 +139,11 @@ function HomeContent() {
                   <span className="text-xs font-bold uppercase tracking-widest">{t.common.back}</span>
                 </button>
                 <div>
-                  <label className="block text-xs font-bold text-slate-400 mb-3 uppercase tracking-widest text-center">
+                  <label htmlFor="username-create" className="block text-xs font-bold text-slate-400 mb-3 uppercase tracking-widest text-center">
                     {t.home.username}
                   </label>
                   <Input
+                    id="username-create"
                     type="text"
                     placeholder={t.home.usernamePlaceholder}
                     value={username}
@@ -162,10 +167,11 @@ function HomeContent() {
                   <span className="text-xs font-bold uppercase tracking-widest">{t.common.back}</span>
                 </button>
                 <div>
-                  <label className="block text-xs font-bold text-slate-400 mb-3 uppercase tracking-widest text-center">
+                  <label htmlFor="room-code" className="block text-xs font-bold text-slate-400 mb-3 uppercase tracking-widest text-center">
                     {t.home.roomCode}
                   </label>
                   <Input
+                    id="room-code"
                     type="text"
                     placeholder={t.home.roomCodePlaceholder}
                     value={roomCode}
@@ -189,10 +195,11 @@ function HomeContent() {
                   <span className="text-xs font-bold uppercase tracking-widest">{t.common.back}</span>
                 </button>
                 <div>
-                  <label className="block text-xs font-bold text-slate-400 mb-3 uppercase tracking-widest text-center">
+                  <label htmlFor="username-join" className="block text-xs font-bold text-slate-400 mb-3 uppercase tracking-widest text-center">
                     {t.home.username}
                   </label>
                   <Input
+                    id="username-join"
                     type="text"
                     placeholder={t.home.usernamePlaceholder}
                     value={username}

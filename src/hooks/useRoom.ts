@@ -91,6 +91,41 @@ export function useRoom(roomId: string, username: string | null, preferredLangua
         }
     }, [roomId, userId, username]);
 
+    // Create new room
+    const initializeRoom = useCallback(async () => {
+        if (!userId || !username) return;
+        const roomRef = ref(db, `rooms/${roomId}`);
+
+        try {
+            const snapshot = await get(roomRef);
+            if (!snapshot.exists()) {
+                const roomLanguage = preferredLanguage || 'en';
+                const initialRoom: RoomData = {
+                    id: roomId,
+                    players: {
+                        [userId]: {
+                            id: userId,
+                            username,
+                            score: 0,
+                            status: 'waiting',
+                            guesses: JSON.stringify([])
+                        }
+                    },
+                    gameState: 'waiting',
+                    currentWord: "",
+                    startTime: 0,
+                    settings: { wordLength: 5, language: roomLanguage },
+                };
+                await set(roomRef, initialRoom);
+            } else if (!snapshot.val().players?.[userId]) {
+                joinRoom();
+            }
+        } catch (err) {
+            console.error("Error initializing room:", err);
+            setError("Failed to create room");
+        }
+    }, [roomId, userId, username, joinRoom, preferredLanguage]);
+
     // Subscribe to room updates
     useEffect(() => {
         // Allow subscription if we have userId - returning players don't need username
@@ -143,42 +178,7 @@ export function useRoom(roomId: string, username: string | null, preferredLangua
         });
 
         return () => unsubscribe();
-    }, [roomId, userId, username, joinRoom]);
-
-    // Create new room
-    const initializeRoom = useCallback(async () => {
-        if (!userId || !username) return;
-        const roomRef = ref(db, `rooms/${roomId}`);
-
-        try {
-            const snapshot = await get(roomRef);
-            if (!snapshot.exists()) {
-                const roomLanguage = preferredLanguage || 'en';
-                const initialRoom: RoomData = {
-                    id: roomId,
-                    players: {
-                        [userId]: {
-                            id: userId,
-                            username,
-                            score: 0,
-                            status: 'waiting',
-                            guesses: JSON.stringify([])
-                        }
-                    },
-                    gameState: 'waiting',
-                    currentWord: "",
-                    startTime: 0,
-                    settings: { wordLength: 5, language: roomLanguage },
-                };
-                await set(roomRef, initialRoom);
-            } else if (!snapshot.val().players?.[userId]) {
-                joinRoom();
-            }
-        } catch (err) {
-            console.error("Error initializing room:", err);
-            setError("Failed to create room");
-        }
-    }, [roomId, userId, username, joinRoom, preferredLanguage]);
+    }, [roomId, userId, username, joinRoom, initializeRoom]);
 
     // Start game
     const startGame = useCallback(async () => {
