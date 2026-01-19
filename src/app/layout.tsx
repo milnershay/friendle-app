@@ -4,7 +4,6 @@ import { Inter } from "next/font/google";
 import { Toaster } from "react-hot-toast";
 import AuthWrapper from "./AuthWrapper";
 import "./globals.css";
-import ConnectionStatus from "@/components/ConnectionStatus";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import VersionDisplay from "@/components/ui/VersionDisplay";
 
@@ -57,7 +56,6 @@ export default function RootLayout({
               },
             }}
           />
-          <ConnectionStatus />
           <ErrorBoundary>{children}</ErrorBoundary>
           <VersionDisplay />
           <Analytics />

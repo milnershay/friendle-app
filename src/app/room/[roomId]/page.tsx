@@ -2,10 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
-import { Loader, User as UserIcon } from "lucide-react";
+import { Loader } from "lucide-react";
 import { useRoom } from "@/hooks/useRoom";
-import { useUserStats } from "@/hooks/useUserStats";
-import ProfileModal from "@/components/profile/ProfileModal";
 import RoomContent from "@/components/room/RoomContent";
 import ResultsView from "@/components/room/ResultsView";
 import PlayerList from "@/components/room/PlayerList";
@@ -30,47 +28,27 @@ export default function RoomPage() {
         updateSettings,
         resetRound,
         clearScores,
-        addCustomWord,
         skipWord,
         leaveRoom
     } = useRoom(roomId as string, username, preferredLanguage);
 
-    const { profile, loading: profileLoading, updateUsername, addRoomToHistory } = useUserStats();
-    const [isProfileModalOpen, setProfileModalOpen] = useState(false);
-
     const [activeTab, setActiveTab] = useState<'game' | 'players'>('game');
     const [prevTab, setPrevTab] = useState<'game' | 'players'>('game');
+    const [resultsDismissed, setResultsDismissed] = useState(false);
 
     const handleTabChange = (tab: 'game' | 'players') => {
         setPrevTab(activeTab);
         setActiveTab(tab);
     };
 
-    // Always call hooks at the top level
-    const [resultsDismissed, setResultsDismissed] = useState(false);
-
-    // Reset dismissed state when game state changes to playing or waiting
+    // Reset dismissed state when game state changes
     useEffect(() => {
         if (room?.gameState === 'waiting' || room?.gameState === 'playing') {
             setResultsDismissed(false);
         }
     }, [room?.gameState]);
 
-    // Add room to user's history when they join
-    useEffect(() => {
-        if (room && roomId && addRoomToHistory) {
-            const playerCount = room.players ? Object.keys(room.players).length : 0;
-            addRoomToHistory({
-                roomId: roomId as string,
-                lastJoined: Date.now(),
-                playerCount
-            });
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [room?.id, roomId]);
-
     const showResults = room?.gameState === 'finished' && !resultsDismissed;
-
     const t = useTranslation(room?.settings?.language || 'en');
 
     if (error) return (
@@ -78,7 +56,6 @@ export default function RoomPage() {
             <div className="bg-red-900/50 border border-red-500 rounded-xl p-6 max-w-md glass text-center">
                 <h2 className="text-xl font-bold mb-2 text-red-400">Connection Error</h2>
                 <p className="text-red-300 mb-4">{error}</p>
-                <p className="text-sm text-slate-400 mb-6">Could not connect to the room. Please check your internet connection and try again.</p>
                 <div className="flex gap-4">
                     <button onClick={() => window.location.reload()} className="flex-1 bg-purple-600 hover:bg-purple-500 px-4 py-2 rounded-lg transition-colors font-semibold">Retry</button>
                     <button onClick={() => router.push("/")} className="flex-1 bg-slate-700 hover:bg-slate-600 px-4 py-2 rounded-lg transition-colors">Go Home</button>
@@ -87,51 +64,47 @@ export default function RoomPage() {
         </div>
     );
 
-    if (loading || !room || profileLoading) return <RoomSkeleton />;
+    if (loading || !room) return <RoomSkeleton />;
+
     if (!userId) {
         return (
-            <div className="min-h-screen flex items-center justify-center p-4">
+            <div className="min-h-screen flex items-center justify-center bg-slate-900 text-white p-4">
                 <div className="text-center max-w-md">
-                    <p className="text-red-400 mb-4">Authentication error: User ID not found</p>
+                    <p className="text-red-400 mb-4">Authentication error</p>
                     <button onClick={() => router.push("/")} className="bg-purple-600 hover:bg-purple-500 px-4 py-2 rounded-lg transition-colors">Go Home</button>
                 </div>
             </div>
         );
     }
-    const myPlayer = room.players && userId ? room.players[userId] : undefined;
+
+    const myPlayer = room.players?.[userId];
+
+    // If player is not in room and has no username, prompt them to join properly
+    if (!myPlayer && !username) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-slate-900 text-white p-4">
+                <div className="text-center max-w-md bg-slate-800/50 border border-slate-700 rounded-xl p-6">
+                    <h2 className="text-xl font-bold mb-2">Join Room</h2>
+                    <p className="text-slate-400 mb-4">{t.room.roomCode}: <span className="font-mono text-white">{roomId}</span></p>
+                    <p className="text-slate-400 mb-4">Enter your name to join this room</p>
+                    <button
+                        onClick={() => router.push(`/?join=${roomId}`)}
+                        className="bg-purple-600 hover:bg-purple-500 px-6 py-3 rounded-lg transition-colors font-semibold"
+                    >
+                        Join Room
+                    </button>
+                </div>
+            </div>
+        );
+    }
     const playerList = Object.values(room.players || {});
     const isHost = playerList[0]?.id === userId;
 
     const handleLeaveRoom = async () => {
         if (window.confirm(t.room.confirmLeave)) {
-            // Remove player from room and cleanup if empty
             await leaveRoom();
             router.push('/');
         }
-    };
-
-    const handleToggleRoutine = () => {
-        if (!room.settings.useRoutine && (!room.settings.dailyRoutine || room.settings.dailyRoutine.length === 0)) {
-            updateSettings({
-                useRoutine: true,
-                dailyRoutine: [
-                    { language: 'en', wordLength: 5 },
-                    { language: 'he', wordLength: 5 }
-                ]
-            });
-        } else {
-            updateSettings({ useRoutine: !room.settings.useRoutine });
-        }
-    };
-
-    const handleAddToRoutine = (lang: 'en' | 'he', length: 4 | 5 | 6) => {
-        const currentRoutine = room.settings.dailyRoutine || [];
-        updateSettings({ dailyRoutine: [...currentRoutine, { language: lang, wordLength: length }] });
-    };
-
-    const handleRemoveFromRoutine = (index: number) => {
-        const currentRoutine = room.settings.dailyRoutine || [];
-        updateSettings({ dailyRoutine: currentRoutine.filter((_, i) => i !== index) });
     };
 
     return (
@@ -171,13 +144,6 @@ export default function RoomPage() {
                         {t.room.players}
                     </button>
                 </div>
-                <button
-                    onClick={() => setProfileModalOpen(true)}
-                    className="text-slate-400 hover:text-white transition-colors"
-                    title="View Profile"
-                >
-                    <UserIcon />
-                </button>
             </div>
 
             {/* Mobile Content Area */}
@@ -210,18 +176,12 @@ export default function RoomPage() {
                         actionLoading={actionLoading}
                         startGame={startGame}
                         updateSettings={updateSettings}
-                        addCustomWord={addCustomWord}
-                        handleToggleRoutine={handleToggleRoutine}
-                        handleAddToRoutine={handleAddToRoutine}
-                        handleRemoveFromRoutine={handleRemoveFromRoutine}
                         submitGuess={submitGuess}
                     />
                 </div>
             </div>
 
-            {/* --- Desktop Layout --- */}
-
-            {/* Sidebar (Desktop only) */}
+            {/* Desktop Sidebar */}
             <div className="w-full md:w-80 glass md:border-r border-white/10 p-6 flex-col hidden md:flex">
                 <PlayerList
                     room={room}
@@ -231,29 +191,27 @@ export default function RoomPage() {
                     isHost={isHost}
                 />
 
-                {room.gameState !== 'waiting' && room.gameState !== 'finished' && isHost && (
+                {room.gameState === 'playing' && isHost && (
                     <div className="mt-4 flex gap-2">
                         <button
-                            onClick={() => window.confirm("Are you sure you want to skip this word for everyone?") && skipWord()}
-                            className="flex-1 bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-400 font-bold py-2 px-3 rounded-lg transition-all active:scale-[0.98] text-sm border border-yellow-500/20"
-                            title={t.room.skipWord}
+                            onClick={() => window.confirm("Skip this word?") && skipWord()}
+                            className="flex-1 bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-400 font-bold py-2 px-3 rounded-lg transition-all text-sm border border-yellow-500/20"
                         >
-                            {t.room.skipWord}
+                            Skip Word
                         </button>
                         <button
-                            onClick={() => window.confirm("Are you sure you want to reset the round? This will end the current game for everyone.") && resetRound()}
+                            onClick={() => window.confirm("Reset the round?") && resetRound()}
                             disabled={actionLoading === 'reset'}
-                            className="flex-1 bg-red-500/20 hover:bg-red-500/30 text-red-400 font-bold py-2 px-3 rounded-lg transition-all active:scale-[0.98] text-sm border border-red-500/20 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                            title={t.room.resetRound}
+                            className="flex-1 bg-red-500/20 hover:bg-red-500/30 text-red-400 font-bold py-2 px-3 rounded-lg transition-all text-sm border border-red-500/20 flex items-center justify-center gap-2 disabled:opacity-50"
                         >
                             {actionLoading === 'reset' && <Loader className="animate-spin" size={16} />}
-                            {t.room.resetRound}
+                            Reset Round
                         </button>
                     </div>
                 )}
             </div>
 
-            {/* Main Game Area (Desktop only) */}
+            {/* Desktop Main Game Area */}
             <div className="flex-1 p-2 md:p-8 flex-col items-center justify-center overflow-y-auto hidden md:flex">
                 <RoomContent
                     room={room}
@@ -262,10 +220,6 @@ export default function RoomPage() {
                     actionLoading={actionLoading}
                     startGame={startGame}
                     updateSettings={updateSettings}
-                    addCustomWord={addCustomWord}
-                    handleToggleRoutine={handleToggleRoutine}
-                    handleAddToRoutine={handleAddToRoutine}
-                    handleRemoveFromRoutine={handleRemoveFromRoutine}
                     submitGuess={submitGuess}
                 />
             </div>
@@ -278,15 +232,6 @@ export default function RoomPage() {
                     onClose={() => setResultsDismissed(true)}
                     onStartGame={startGame}
                     onResetRound={resetRound}
-                />
-            )}
-
-            {/* Profile Modal */}
-            {isProfileModalOpen && profile && (
-                <ProfileModal
-                    profile={profile}
-                    updateUsername={updateUsername}
-                    onClose={() => setProfileModalOpen(false)}
                 />
             )}
         </main>

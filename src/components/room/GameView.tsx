@@ -27,11 +27,6 @@ export default function GameView({ room, myPlayer, onGuess }: GameViewProps) {
                     <div className="text-4xl md:text-5xl font-black bg-gradient-to-r from-green-400 to-emerald-500 text-transparent bg-clip-text mb-4 tracking-widest">
                         {room.currentWord}
                     </div>
-                    {room.currentSuggester && (
-                        <div className="inline-block bg-white/10 px-3 py-1 rounded-full text-sm text-slate-300 border border-white/5">
-                            {t.room.suggestedBy} <span className="text-indigo-300 font-bold">{room.currentSuggester}</span>
-                        </div>
-                    )}
                 </div>
             )}
 
