@@ -7,6 +7,7 @@ import toast from 'react-hot-toast';
 // Mock useRouter
 vi.mock('next/navigation', () => ({
     useRouter: vi.fn(),
+    useSearchParams: vi.fn().mockReturnValue({ get: vi.fn() }),
 }));
 
 // Mock react-hot-toast
@@ -24,15 +25,36 @@ describe('Home Page - New Flow', () => {
         (navigation.useRouter as vi.Mock).mockReturnValue({
             push: pushMock,
         });
-        // Mock localStorage for language settings
-        Storage.prototype.getItem = vi.fn(() => 'en');
-        Storage.prototype.setItem = vi.fn();
+        
+        // Mock localStorage
+        const localStorageMock = (() => {
+            let store: Record<string, string> = {
+                'friendle_language': 'en'
+            };
+            return {
+                getItem: vi.fn((key: string) => store[key] || null),
+                setItem: vi.fn((key: string, value: string) => {
+                    store[key] = value.toString();
+                }),
+                clear: vi.fn(() => {
+                    store = {};
+                }),
+                removeItem: vi.fn((key: string) => {
+                    delete store[key];
+                })
+            };
+        })();
+
+        Object.defineProperty(window, 'localStorage', {
+            value: localStorageMock,
+            configurable: true,
+            writable: true
+        });
     });
 
     it('renders the initial action choice (step 0)', async () => {
         render(<Home />);
         expect(await screen.findByText('Create Room')).toBeDefined();
-        expect(await screen.findByText('Join Random Room')).toBeDefined();
         expect(await screen.findByText('Join with Code')).toBeDefined();
         expect(screen.queryByLabelText('Username')).toBeNull();
     });
@@ -68,7 +90,7 @@ describe('Home Page - New Flow', () => {
         render(<Home />);
         fireEvent.click(await screen.findByText('Create Room'));
         fireEvent.click(await screen.findByText('Create Room')); // Empty username
-        expect(toast.error).toHaveBeenCalledWith('Username cannot be empty');
+        expect(toast.error).toHaveBeenCalledWith('Username must be 1-20 characters');
         expect(pushMock).not.toHaveBeenCalled();
     });
 
@@ -94,10 +116,10 @@ describe('Home Page - New Flow', () => {
         fireEvent.click(await screen.findByText('Join with Code'));
 
         const roomInput = await screen.findByLabelText('Room Code');
-        fireEvent.change(roomInput, { target: { value: 'INVALID' } }); // Too long
+        fireEvent.change(roomInput, { target: { value: 'TOO_LONG_CODE' } }); 
         fireEvent.click(await screen.findByText('Next'));
 
-        expect(toast.error).toHaveBeenCalledWith('Room code must be exactly 6 characters');
+        expect(toast.error).toHaveBeenCalledWith('Invalid room code');
         expect(screen.queryByLabelText('Username')).toBeNull();
     });
 

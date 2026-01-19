@@ -9,7 +9,7 @@ interface ResultsViewProps {
     onResetRound?: () => void;
 }
 
-export default function ResultsView({ room, userId, onClose, onResetRound }: ResultsViewProps) {
+export default function ResultsView({ room, onClose, onResetRound }: ResultsViewProps) {
     const t = useTranslation(room.settings.language || 'en');
     const playerList = Object.values(room.players || {});
 
