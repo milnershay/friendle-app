@@ -8,11 +8,13 @@ import { ArrowRight, ArrowLeft, Plus, LogIn, Loader, Shuffle } from "lucide-reac
 import toast from "react-hot-toast"
 import { useTranslation, getStoredLanguage, setStoredLanguage, type Language } from "@/lib/i18n"
 import { db } from "@/lib/firebase"
-import { ref, query, orderByChild, equalTo, get, limitToFirst } from "firebase/database"
+import { ref, query, orderByChild, equalTo, get, limitToFirst, set } from "firebase/database"
+import { useAuth } from "@/hooks/useAuth"
 
 function HomeContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const { user: authUser } = useAuth()
   const [username, setUsername] = useState("")
   const [roomCode, setRoomCode] = useState("")
   const [step, setStep] = useState(0) // 0: Choose Action, 1: Create Room, 2: Join with Code, 3: Enter Username for Join, 4: Random Room
@@ -87,11 +89,12 @@ function HomeContent() {
         const rooms = snapshot.val() as Record<string, {
           players?: Record<string, unknown>;
           gameState?: string;
+          settings?: { language?: string };
         }>
-        // Find a room that's waiting and has space
+        // Find a room that's waiting, has space, and matches the user's language
         const availableRoom = Object.entries(rooms).find(([, room]) => {
           const playerCount = Object.keys(room.players || {}).length
-          return room.gameState === 'waiting' && playerCount < 4
+          return room.gameState === 'waiting' && playerCount < 4 && room.settings?.language === language
         })
 
         if (availableRoom) {
@@ -101,8 +104,31 @@ function HomeContent() {
         }
       }
 
-      // No available room found, create a new public one
+      // No available room found, pre-create a new public one in Firebase before navigating
+      // so other random joiners can find it immediately
       const newRoomId = Math.random().toString(36).substring(2, 8).toUpperCase()
+      if (authUser) {
+        const now = Date.now()
+        await set(ref(db, `rooms/${newRoomId}`), {
+          id: newRoomId,
+          type: 'public',
+          players: {
+            [authUser.uid]: {
+              id: authUser.uid,
+              username: trimmedUsername,
+              score: 0,
+              status: 'waiting',
+              guesses: JSON.stringify([])
+            }
+          },
+          gameState: 'waiting',
+          currentWord: '',
+          startTime: 0,
+          createdAt: now,
+          lastActivity: now,
+          settings: { wordLength: 5, language }
+        })
+      }
       router.push(`/room/${newRoomId}?username=${encodeURIComponent(trimmedUsername)}&language=${language}&type=public`)
     } catch (error) {
       console.error("Error finding random room:", error)

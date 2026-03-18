@@ -1,6 +1,7 @@
 {
   "rules": {
     "rooms": {
+      ".indexOn": ["type"],
       "$roomId": {
         // Anyone can read rooms (needed for joining and real-time updates)
         ".read": true,
