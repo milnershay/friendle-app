@@ -56,25 +56,6 @@ export default function RoomLobby({
                     </h3>
 
                     <div className="space-y-4">
-                        {/* Language */}
-                        <div>
-                            <label className="block text-sm font-medium text-slate-400 mb-2">{t.room.language || "Language"}</label>
-                            <div className="flex bg-slate-900/50 rounded-lg p-1 border border-slate-700">
-                                <button
-                                    onClick={() => onUpdateSettings({ language: 'en' })}
-                                    className={`flex-1 py-2 rounded-md text-sm font-bold transition-all ${room.settings.language === 'en' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}
-                                >
-                                    English
-                                </button>
-                                <button
-                                    onClick={() => onUpdateSettings({ language: 'he' })}
-                                    className={`flex-1 py-2 rounded-md text-sm font-bold transition-all ${room.settings.language === 'he' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}
-                                >
-                                    עברית
-                                </button>
-                            </div>
-                        </div>
-
                         {/* Word Length */}
                         <div>
                             <label className="block text-sm font-medium text-slate-400 mb-2">{t.room.wordLength || "Word Length"}</label>
