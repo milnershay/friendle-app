@@ -17,6 +17,7 @@ export interface Player {
     startTime?: number;
     endTime?: number;
     finalScore?: number;
+    joinedAt?: number;
 }
 
 export interface RoomSettings {
@@ -77,7 +78,8 @@ export function useRoom(
                         username,
                         score: 0,
                         status: 'waiting',
-                        guesses: JSON.stringify([])
+                        guesses: JSON.stringify([]),
+                        joinedAt: Date.now()
                     };
                 }
                 return currentRoom;
@@ -107,7 +109,8 @@ export function useRoom(
                             username,
                             score: 0,
                             status: 'playing',
-                            guesses: JSON.stringify([])
+                            guesses: JSON.stringify([]),
+                            joinedAt: now
                         }
                     },
                     gameState: 'waiting',
