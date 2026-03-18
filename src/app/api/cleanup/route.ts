@@ -34,7 +34,8 @@ export async function GET(request: NextRequest) {
 
     const now = Date.now();
     const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000;
-    const ONE_HOUR = 60 * 60 * 1000;
+    const TWO_HOURS = 2 * 60 * 60 * 1000;
+    const THIRTY_MINUTES = 30 * 60 * 1000;
 
     let deletedCount = 0;
     const deletions: Promise<void>[] = [];
@@ -42,12 +43,19 @@ export async function GET(request: NextRequest) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     for (const [roomId, room] of Object.entries(rooms) as [string, any][]) {
       const roomAge = now - (room.createdAt || now);
+      const inactiveTime = now - (room.lastActivity || room.createdAt || now);
       const playerCount = Object.keys(room.players || {}).length;
 
       // Delete if:
-      // 1. Empty room older than 1 hour
-      // 2. Any room older than 24 hours
-      if ((playerCount === 0 && roomAge > ONE_HOUR) || roomAge > TWENTY_FOUR_HOURS) {
+      // 1. Empty room older than 30 minutes
+      // 2. Inactive room (no activity) for 2+ hours
+      // 3. Any room older than 24 hours
+      const shouldDelete =
+        (playerCount === 0 && roomAge > THIRTY_MINUTES) ||
+        (inactiveTime > TWO_HOURS) ||
+        (roomAge > TWENTY_FOUR_HOURS);
+
+      if (shouldDelete) {
         deletions.push(roomsRef.child(roomId).remove());
         deletedCount++;
       }

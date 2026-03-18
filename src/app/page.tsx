@@ -4,21 +4,23 @@ import { useState, useEffect, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { ArrowRight, ArrowLeft, Plus, LogIn, Loader } from "lucide-react"
+import { ArrowRight, ArrowLeft, Plus, LogIn, Loader, Shuffle } from "lucide-react"
 import toast from "react-hot-toast"
 import { useTranslation, getStoredLanguage, setStoredLanguage, type Language } from "@/lib/i18n"
+import { db } from "@/lib/firebase"
+import { ref, query, orderByChild, equalTo, get, limitToFirst } from "firebase/database"
 
 function HomeContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [username, setUsername] = useState("")
   const [roomCode, setRoomCode] = useState("")
-  const [step, setStep] = useState(0) // 0: Choose Action, 1: Create Room, 2: Join with Code, 3: Enter Username for Join
+  const [step, setStep] = useState(0) // 0: Choose Action, 1: Create Room, 2: Join with Code, 3: Enter Username for Join, 4: Random Room
   const [language, setLanguage] = useState<Language>('en')
+  const [isSearchingRandom, setIsSearchingRandom] = useState(false)
   const t = useTranslation(language)
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLanguage(getStoredLanguage());
   }, []);
 
@@ -26,7 +28,6 @@ function HomeContent() {
     // Check for ?join= parameter to pre-fill room code
     const joinCode = searchParams.get('join');
     if (joinCode) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setRoomCode(joinCode.toUpperCase());
       setStep(3); // Go directly to username entry
     }
@@ -61,6 +62,54 @@ function HomeContent() {
     }
     const trimmedCode = roomCode.trim().toUpperCase()
     router.push(`/room/${trimmedCode}?username=${encodeURIComponent(trimmedUsername)}&language=${language}`)
+  }
+
+  const handleJoinRandom = async () => {
+    const trimmedUsername = username.trim()
+    if (!trimmedUsername || trimmedUsername.length < 1 || trimmedUsername.length > 20) {
+      return toast.error("Username must be 1-20 characters")
+    }
+
+    setIsSearchingRandom(true)
+    try {
+      // Find public rooms with gameState = 'waiting' and < 4 players
+      const roomsRef = ref(db, 'rooms')
+      const publicRoomsQuery = query(
+        roomsRef,
+        orderByChild('type'),
+        equalTo('public'),
+        limitToFirst(10)
+      )
+
+      const snapshot = await get(publicRoomsQuery)
+
+      if (snapshot.exists()) {
+        const rooms = snapshot.val() as Record<string, {
+          players?: Record<string, unknown>;
+          gameState?: string;
+        }>
+        // Find a room that's waiting and has space
+        const availableRoom = Object.entries(rooms).find(([, room]) => {
+          const playerCount = Object.keys(room.players || {}).length
+          return room.gameState === 'waiting' && playerCount < 4
+        })
+
+        if (availableRoom) {
+          const [roomId] = availableRoom
+          router.push(`/room/${roomId}?username=${encodeURIComponent(trimmedUsername)}&language=${language}`)
+          return
+        }
+      }
+
+      // No available room found, create a new public one
+      const newRoomId = Math.random().toString(36).substring(2, 8).toUpperCase()
+      router.push(`/room/${newRoomId}?username=${encodeURIComponent(trimmedUsername)}&language=${language}&type=public`)
+    } catch (error) {
+      console.error("Error finding random room:", error)
+      toast.error("Failed to find a room. Please try again.")
+    } finally {
+      setIsSearchingRandom(false)
+    }
   }
 
   const handleKeyDown = (e: React.KeyboardEvent, action: () => void) => {
@@ -114,6 +163,13 @@ function HomeContent() {
                   className="w-full bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-400 hover:to-purple-400 text-white font-bold text-lg h-14 rounded-xl"
                 >
                   <Plus className="w-5 h-5 mr-2" /> {t.home.createRoom}
+                </Button>
+
+                <Button
+                  onClick={() => setStep(4)}
+                  className="w-full bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-400 hover:to-emerald-400 text-white font-bold text-lg h-14 rounded-xl"
+                >
+                  <Shuffle className="w-5 h-5 mr-2" /> Join Random Game
                 </Button>
 
                 <div className="relative flex py-2 items-center">
@@ -211,6 +267,45 @@ function HomeContent() {
                 </div>
                 <Button onClick={handleJoinSubmit} className="w-full bg-white text-slate-950 hover:bg-slate-200 font-bold text-lg h-14 rounded-xl">
                   {t.home.join}
+                </Button>
+              </div>
+            )}
+
+            {/* Step 4: Join Random - Enter Username */}
+            {step === 4 && (
+              <div className="space-y-6">
+                <button onClick={() => setStep(0)} className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors">
+                  <ArrowLeft className="w-4 h-4 rtl:rotate-180" />
+                  <span className="text-xs font-bold uppercase tracking-widest">{t.common.back}</span>
+                </button>
+                <div>
+                  <label htmlFor="username-random" className="block text-xs font-bold text-slate-400 mb-3 uppercase tracking-widest text-center">
+                    {t.home.username}
+                  </label>
+                  <Input
+                    id="username-random"
+                    type="text"
+                    placeholder={t.home.usernamePlaceholder}
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    onKeyDown={(e) => handleKeyDown(e, handleJoinRandom)}
+                    className="w-full bg-black/20 border-transparent focus:border-white/20 text-white placeholder:text-slate-600 h-14 rounded-xl px-6 text-center text-xl"
+                    autoFocus
+                    disabled={isSearchingRandom}
+                  />
+                </div>
+                <Button
+                  onClick={handleJoinRandom}
+                  disabled={isSearchingRandom}
+                  className="w-full bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-400 hover:to-emerald-400 text-white font-bold text-lg h-14 rounded-xl disabled:opacity-50"
+                >
+                  {isSearchingRandom ? (
+                    <>
+                      <Loader className="w-5 h-5 mr-2 animate-spin" /> Finding game...
+                    </>
+                  ) : (
+                    <>Find Game</>
+                  )}
                 </Button>
               </div>
             )}

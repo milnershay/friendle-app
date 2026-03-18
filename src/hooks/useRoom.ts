@@ -2,20 +2,10 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import toast from "react-hot-toast";
 import { db } from "@/lib/firebase";
 import { useAuth } from "./useAuth";
-import { useUserStats } from "./useUserStats";
 import { ref, onValue, set, update, get, remove, runTransaction } from "firebase/database";
 import { WORD_LISTS } from "@/lib/wordLists";
 
 // --- Types ---
-
-export interface GameHistory {
-    date: number;
-    language: 'en' | 'he';
-    wordLength: number;
-    guessCount: number;
-    timeTaken: number;
-    won: boolean;
-}
 
 export interface Player {
     id: string;
@@ -37,10 +27,13 @@ export interface RoomSettings {
 
 export interface RoomData {
     id: string;
+    type: 'private' | 'public';
     players: Record<string, Player>;
     gameState: 'waiting' | 'playing' | 'finished';
     currentWord: string | null;
     startTime: number;
+    createdAt: number;
+    lastActivity: number;
     settings: RoomSettings;
 }
 
@@ -53,9 +46,13 @@ export const parseGuesses = (guesses?: string): string[] => {
 
 // --- Hook ---
 
-export function useRoom(roomId: string, username: string | null, preferredLanguage: 'en' | 'he' | null = null) {
+export function useRoom(
+    roomId: string,
+    username: string | null,
+    preferredLanguage: 'en' | 'he' | null = null,
+    roomType: 'private' | 'public' | null = null
+) {
     const { user: authUser, loading: authLoading } = useAuth();
-    const { updateUserStats } = useUserStats();
     const userId = authUser?.uid;
 
     const [room, setRoom] = useState<RoomData | null>(null);
@@ -100,20 +97,24 @@ export function useRoom(roomId: string, username: string | null, preferredLangua
             const snapshot = await get(roomRef);
             if (!snapshot.exists()) {
                 const roomLanguage = preferredLanguage || 'en';
+                const now = Date.now();
                 const initialRoom: RoomData = {
                     id: roomId,
+                    type: roomType || 'private', // Use URL parameter or default to private
                     players: {
                         [userId]: {
                             id: userId,
                             username,
                             score: 0,
-                            status: 'waiting',
+                            status: 'playing',
                             guesses: JSON.stringify([])
                         }
                     },
                     gameState: 'waiting',
                     currentWord: "",
                     startTime: 0,
+                    createdAt: now,
+                    lastActivity: now,
                     settings: { wordLength: 5, language: roomLanguage },
                 };
                 await set(roomRef, initialRoom);
@@ -124,7 +125,7 @@ export function useRoom(roomId: string, username: string | null, preferredLangua
             console.error("Error initializing room:", err);
             setError("Failed to create room");
         }
-    }, [roomId, userId, username, joinRoom, preferredLanguage]);
+    }, [roomId, userId, username, joinRoom, preferredLanguage, roomType]);
 
     // Subscribe to room updates
     useEffect(() => {
@@ -216,6 +217,7 @@ export function useRoom(roomId: string, username: string | null, preferredLangua
                     currentWord: randomWord.toUpperCase(),
                     gameState: 'playing',
                     startTime: Date.now(),
+                    lastActivity: Date.now(),
                     players: updatedPlayers,
                 };
             });
@@ -238,7 +240,10 @@ export function useRoom(roomId: string, username: string | null, preferredLangua
         const allFinished = players.every(p => p.status === 'won' || p.status === 'lost');
 
         if (allFinished) {
-            await update(ref(db, `rooms/${roomId}`), { gameState: 'finished' });
+            await update(ref(db, `rooms/${roomId}`), {
+                gameState: 'finished',
+                lastActivity: Date.now()
+            });
         }
     }, [roomId]);
 
@@ -268,10 +273,6 @@ export function useRoom(roomId: string, username: string | null, preferredLangua
                 updateData.startTime = playerStartTime;
             }
 
-            let gameCompleted = false;
-            let won = false;
-            let finalTime = 0;
-
             if (guess === room.currentWord) {
                 // Won!
                 const endTime = Date.now();
@@ -284,9 +285,6 @@ export function useRoom(roomId: string, username: string | null, preferredLangua
                 updateData.endTime = endTime;
                 updateData.timeTaken = timeTaken;
                 updateData.finalScore = calculatedScore;
-                gameCompleted = true;
-                won = true;
-                finalTime = timeTaken;
             } else if (newGuesses.length >= (room.settings.maxGuesses || 6)) {
                 // Lost
                 const endTime = Date.now();
@@ -296,33 +294,18 @@ export function useRoom(roomId: string, username: string | null, preferredLangua
                 updateData.endTime = endTime;
                 updateData.timeTaken = timeTaken;
                 updateData.finalScore = 0;
-                gameCompleted = true;
-                won = false;
-                finalTime = timeTaken;
-            }
-
-            // Update stats if game completed
-            if (gameCompleted) {
-                const gameRecord: GameHistory = {
-                    date: Date.now(),
-                    language: room.settings.language || 'en',
-                    wordLength: room.settings.wordLength || 5,
-                    guessCount: newGuesses.length,
-                    timeTaken: finalTime,
-                    won
-                };
-                updateUserStats(gameRecord);
             }
 
             await update(ref(db, `rooms/${roomId}/players/${userId}`), updateData);
 
-            if (gameCompleted) {
+            // Check if game is over after updating player status
+            if (updateData.status === 'won' || updateData.status === 'lost') {
                 checkGameOver();
             }
         } finally {
             isSubmittingRef.current = false;
         }
-    }, [room, roomId, userId, checkGameOver, updateUserStats]);
+    }, [room, roomId, userId, checkGameOver]);
 
     // Update room settings
     const updateSettings = useCallback(async (newSettings: Partial<RoomSettings>) => {
@@ -344,7 +327,7 @@ export function useRoom(roomId: string, username: string | null, preferredLangua
             Object.keys(updatedPlayers).forEach(key => {
                 updatedPlayers[key] = {
                     ...updatedPlayers[key],
-                    status: 'waiting',
+                    status: 'playing',
                     guesses: JSON.stringify([]),
                 };
                 delete updatedPlayers[key].endTime;
@@ -356,6 +339,7 @@ export function useRoom(roomId: string, username: string | null, preferredLangua
             await update(ref(db, `rooms/${roomId}`), {
                 gameState: 'waiting',
                 currentWord: "",
+                lastActivity: Date.now(),
                 players: updatedPlayers
             });
         } catch (err) {
@@ -369,7 +353,10 @@ export function useRoom(roomId: string, username: string | null, preferredLangua
     // Skip current word
     const skipWord = useCallback(async () => {
         try {
-            await update(ref(db, `rooms/${roomId}`), { gameState: 'finished' });
+            await update(ref(db, `rooms/${roomId}`), {
+                gameState: 'finished',
+                lastActivity: Date.now()
+            });
         } catch (err) {
             console.error("Failed to skip word:", err);
         }
@@ -389,7 +376,7 @@ export function useRoom(roomId: string, username: string | null, preferredLangua
         }
     }, [room, roomId]);
 
-    // Leave room
+    // Leave room - delete room if empty
     const leaveRoom = useCallback(async () => {
         if (!userId) return;
         try {
@@ -399,13 +386,19 @@ export function useRoom(roomId: string, username: string | null, preferredLangua
                 if (currentRoom.players?.[userId]) {
                     delete currentRoom.players[userId];
                 }
+                // Update lastActivity
+                currentRoom.lastActivity = Date.now();
                 return currentRoom;
             });
 
             if (committed) {
-                const remainingPlayers = Object.keys(snapshot.val()?.players || {}).length;
+                const roomData = snapshot.val();
+                const remainingPlayers = Object.keys(roomData?.players || {}).length;
+
+                // Delete room if empty
                 if (remainingPlayers === 0) {
                     await remove(roomRef);
+                    console.log(`Room ${roomId} deleted (no players remaining)`);
                 }
             }
         } catch (err) {

@@ -15,6 +15,7 @@ export default function RoomPage() {
     const searchParams = useSearchParams();
     const username = searchParams.get("username");
     const preferredLanguage = searchParams.get("language") as 'en' | 'he' | null;
+    const roomType = searchParams.get("type") as 'private' | 'public' | null;
     const router = useRouter();
 
     const {
@@ -30,7 +31,7 @@ export default function RoomPage() {
         clearScores,
         skipWord,
         leaveRoom
-    } = useRoom(roomId as string, username, preferredLanguage);
+    } = useRoom(roomId as string, username, preferredLanguage, roomType);
 
     const [activeTab, setActiveTab] = useState<'game' | 'players'>('game');
     const [prevTab, setPrevTab] = useState<'game' | 'players'>('game');
