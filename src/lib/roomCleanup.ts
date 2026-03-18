@@ -21,6 +21,7 @@ export async function cleanupOldRooms(maxAgeHours: number = 24) {
 
         let deletedCount = 0;
         let totalRooms = 0;
+        const deletions: Promise<void>[] = [];
 
         for (const [roomId, roomData] of Object.entries(rooms)) {
             totalRooms++;
@@ -41,9 +42,13 @@ export async function cleanupOldRooms(maxAgeHours: number = 24) {
 
             if (hasNoActivity && (isEmpty || hasNoScores)) {
                 console.log(`Deleting old room: ${roomId} (age: ${(age / 1000 / 60 / 60).toFixed(1)} hours)`);
-                await remove(ref(db, `rooms/${roomId}`));
+                deletions.push(remove(ref(db, `rooms/${roomId}`)));
                 deletedCount++;
             }
+        }
+
+        if (deletions.length > 0) {
+            await Promise.all(deletions);
         }
 
         console.log(`Cleanup complete: ${deletedCount} rooms deleted out of ${totalRooms} total`);
