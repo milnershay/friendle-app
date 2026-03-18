@@ -4,123 +4,95 @@
       "$roomId": {
         // Anyone can read rooms (needed for joining and real-time updates)
         ".read": true,
-
         // Must be authenticated (anonymous auth) to create or modify rooms
         ".write": "auth != null && (!data.exists() || data.exists())",
-
         // Validate room structure
         ".validate": "newData.hasChildren(['id', 'players', 'gameState', 'settings', 'createdAt'])",
-
         "id": {
           ".validate": "newData.isString() && newData.val() === $roomId"
         },
-
         "type": {
           ".validate": "newData.isString() && (newData.val() === 'private' || newData.val() === 'public')"
         },
-
         "currentWord": {
           ".validate": "newData.isString() || !newData.exists()"
         },
-
         "gameState": {
           // Any authenticated player in the room can change game state
           ".write": "auth != null && root.child('rooms/' + $roomId + '/players/' + auth.uid).exists()",
           ".validate": "newData.isString() && (newData.val() === 'waiting' || newData.val() === 'playing' || newData.val() === 'finished')"
         },
-
         "startTime": {
           ".validate": "newData.isNumber()"
         },
-
         "createdAt": {
           ".validate": "newData.isNumber() && (!data.exists() || data.val() === newData.val())",
           ".write": "!data.exists()" // Can only set once at creation
         },
-
         "lastActivity": {
           ".validate": "newData.isNumber()"
         },
-
         "settings": {
           ".validate": "newData.hasChildren(['language'])",
-
           "language": {
             ".validate": "newData.isString() && (newData.val() === 'en' || newData.val() === 'he')"
           },
-
           "wordLength": {
             ".validate": "newData.isNumber() && newData.val() >= 4 && newData.val() <= 6"
           },
-
           "maxGuesses": {
             ".validate": "newData.isNumber() && newData.val() >= 4 && newData.val() <= 10"
           },
-
           // Prevent arbitrary fields in settings
           "$other": {
             ".validate": false
           }
         },
-
         "players": {
           "$playerId": {
             // Players can only write to their own data, or anyone can add a new player
             ".write": "auth != null && (auth.uid === $playerId || !data.exists())",
-
             ".validate": "newData.hasChildren(['id', 'username', 'status'])",
-
             "id": {
               ".validate": "newData.isString() && newData.val() === $playerId"
             },
-
             "username": {
               ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 30",
               ".write": "!data.exists() || data.val() === newData.val()" // Can only set once
             },
-
             "score": {
               ".validate": "newData.isNumber() && newData.val() >= 0"
             },
-
             "status": {
-              ".validate": "newData.isString() && (newData.val() === 'playing' || newData.val() === 'won' || newData.val() === 'lost')"
+              ".validate": "newData.isString() && (newData.val() === 'waiting' || newData.val() === 'playing' || newData.val() === 'won' || newData.val() === 'lost')"
             },
-
             "guesses": {
               ".validate": "(newData.isString() && newData.val().length <= 500) || !newData.exists()"
             },
-
             "timeTaken": {
               ".validate": "newData.isNumber() || !newData.exists()"
             },
-
             "startTime": {
               ".validate": "newData.isNumber() || !newData.exists()"
             },
-
             "endTime": {
               ".validate": "newData.isNumber() || !newData.exists()"
             },
-
             "finalScore": {
               ".validate": "newData.isNumber() || !newData.exists()"
             },
-
             // Prevent arbitrary fields on player
             "$other": {
               ".validate": false
             }
           }
         },
-
         // Prevent arbitrary fields at room level
         "$other": {
           ".validate": false
         }
       }
     }
-
     // Removed "users" section - no longer needed without user profiles
   }
 }
