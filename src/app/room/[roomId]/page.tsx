@@ -99,7 +99,7 @@ export default function RoomPage() {
             </div>
         );
     }
-    const playerList = Object.values(room.players || {});
+    const playerList = Object.values(room.players || {}).sort((a, b) => (a.joinedAt || 0) - (b.joinedAt || 0));
     const isHost = playerList[0]?.id === userId;
 
     const handleLeaveRoom = async () => {
