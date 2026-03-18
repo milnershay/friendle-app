@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi, type Mock } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import Home from './page';
 import * as navigation from 'next/navigation';
@@ -22,7 +22,7 @@ describe('Home Page - New Flow', () => {
 
     beforeEach(() => {
         vi.clearAllMocks();
-        (navigation.useRouter as vi.Mock).mockReturnValue({
+        (navigation.useRouter as Mock).mockReturnValue({
             push: pushMock,
         });
         
