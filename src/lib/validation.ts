@@ -181,7 +181,7 @@ export function getRateLimitKey(action: string): string {
     if (!userId) {
       userId = sessionStorage.getItem('friendle_session_id') || '';
       if (!userId) {
-        userId = Math.random().toString(36).substring(2);
+        userId = crypto.randomUUID();
         sessionStorage.setItem('friendle_session_id', userId);
       }
     }
