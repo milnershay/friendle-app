@@ -165,6 +165,20 @@ export function sanitizeText(text: string): string {
  * @param action - The action identifier (e.g., 'create_room').
  * @returns A unique key for rate limiting.
  */
+/**
+ * Generates a cryptographically secure random string of the specified length.
+ * Uses characters A-Z and 0-9.
+ *
+ * @param length - The length of the string to generate.
+ * @returns A secure random string.
+ */
+export function generateSecureId(length: number = 6): string {
+  const chars = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  const array = new Uint32Array(length);
+  crypto.getRandomValues(array);
+  return Array.from(array).map(x => chars[x % chars.length]).join('');
+}
+
 export function getRateLimitKey(action: string): string {
   // Try to get a stable identifier
   let userId = '';
@@ -181,7 +195,7 @@ export function getRateLimitKey(action: string): string {
     if (!userId) {
       userId = sessionStorage.getItem('friendle_session_id') || '';
       if (!userId) {
-        userId = Math.random().toString(36).substring(2);
+        userId = generateSecureId(10).toLowerCase();
         sessionStorage.setItem('friendle_session_id', userId);
       }
     }
