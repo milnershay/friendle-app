@@ -10,6 +10,7 @@ import { useTranslation, getStoredLanguage, setStoredLanguage, type Language } f
 import { db } from "@/lib/firebase"
 import { ref, query, orderByChild, equalTo, get, limitToFirst, set } from "firebase/database"
 import { useAuth } from "@/hooks/useAuth"
+import { generateSecureId } from "@/lib/validation"
 
 function HomeContent() {
   const router = useRouter()
@@ -45,7 +46,7 @@ function HomeContent() {
     if (!trimmedUsername || trimmedUsername.length < 1 || trimmedUsername.length > 20) {
       return toast.error("Username must be 1-20 characters")
     }
-    const newRoomId = Math.random().toString(36).substring(2, 8).toUpperCase()
+    const newRoomId = generateSecureId(6, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789')
     router.push(`/room/${newRoomId}?username=${encodeURIComponent(trimmedUsername)}&language=${language}`)
   }
 
@@ -106,7 +107,7 @@ function HomeContent() {
 
       // No available room found, pre-create a new public one in Firebase before navigating
       // so other random joiners can find it immediately
-      const newRoomId = Math.random().toString(36).substring(2, 8).toUpperCase()
+      const newRoomId = generateSecureId(6, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789')
       if (authUser) {
         const now = Date.now()
         await set(ref(db, `rooms/${newRoomId}`), {

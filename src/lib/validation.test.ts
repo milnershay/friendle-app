@@ -5,6 +5,7 @@ import {
     validateWord,
     checkRateLimit,
     sanitizeText,
+    generateSecureId,
     getRateLimitKey,
     clearAllRateLimits
 } from './validation';
@@ -126,6 +127,34 @@ describe('Validation', () => {
             const key1 = getRateLimitKey('test');
             const key2 = getRateLimitKey('test');
             expect(key1).toBe(key2); // Should be stable for same session
+        });
+    });
+
+    describe('generateSecureId', () => {
+        it('generates a string of the correct length', () => {
+            expect(generateSecureId(6).length).toBe(6);
+            expect(generateSecureId(10).length).toBe(10);
+            expect(generateSecureId().length).toBe(12);
+        });
+
+        it('uses the provided charset', () => {
+            const charset = 'ABC';
+            const id = generateSecureId(100, charset);
+            for (const char of id) {
+                expect(charset).toContain(char);
+            }
+        });
+
+        it('handles cases where window.crypto is missing by using Math.random', () => {
+            const originalCrypto = globalThis.crypto;
+            // @ts-ignore
+            delete globalThis.crypto;
+
+            const id = generateSecureId(6);
+            expect(id.length).toBe(6);
+
+            // Restore
+            globalThis.crypto = originalCrypto;
         });
     });
 });
