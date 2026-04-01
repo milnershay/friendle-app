@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { RoomData, parseGuesses } from "@/hooks/useRoom";
 import { useTranslation } from "@/lib/i18n";
 
@@ -11,7 +12,25 @@ interface ResultsViewProps {
 
 export default function ResultsView({ room, onClose, onResetRound }: ResultsViewProps) {
     const t = useTranslation(room.settings.language || 'en');
-    const playerList = Object.values(room.players || {});
+
+    const sortedPlayers = useMemo(() => {
+        const players = Object.values(room.players || {});
+        return players
+            .map(player => ({
+                ...player,
+                guessCount: parseGuesses(player.guesses).length,
+                isWinner: player.status === 'won'
+            }))
+            .sort((a, b) => {
+                // Winners first, then by final score
+                if (a.isWinner && !b.isWinner) return -1;
+                if (!a.isWinner && b.isWinner) return 1;
+                if (a.isWinner && b.isWinner) {
+                    return (b.finalScore || 0) - (a.finalScore || 0);
+                }
+                return 0;
+            });
+    }, [room.players]);
 
     return (
         <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4">
@@ -27,19 +46,8 @@ export default function ResultsView({ room, onClose, onResetRound }: ResultsView
                 </div>
 
                 <div className="space-y-3 mb-6 max-h-[40vh] overflow-y-auto custom-scrollbar">
-                    {playerList
-                        .sort((a, b) => {
-                            // Winners first, then by final score
-                            if (a.status === 'won' && b.status !== 'won') return -1;
-                            if (a.status !== 'won' && b.status === 'won') return 1;
-                            if (a.status === 'won' && b.status === 'won') {
-                                return (b.finalScore || 0) - (a.finalScore || 0);
-                            }
-                            return 0;
-                        })
-                        .map((player, index) => {
-                            const guessCount = parseGuesses(player.guesses).length;
-                            const isWinner = player.status === 'won';
+                    {sortedPlayers.map((player, index) => {
+                        const { guessCount, isWinner } = player;
                             return (
                                 <div
                                     key={player.id}
