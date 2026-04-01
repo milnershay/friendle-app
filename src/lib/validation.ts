@@ -159,6 +159,39 @@ export function sanitizeText(text: string): string {
 }
 
 /**
+ * Generates a cryptographically secure random identifier.
+ *
+ * @param length - The length of the identifier to generate. Defaults to 12.
+ * @param charset - The set of characters to use. Defaults to lowercase alphanumeric.
+ * @returns A secure random string.
+ */
+export function generateSecureId(
+  length: number = 12,
+  charset: string = 'abcdefghijklmnopqrstuvwxyz0123456789'
+): string {
+  const array = new Uint32Array(length);
+
+  // Use globalThis.crypto for broad compatibility
+  const cryptoObj = typeof window !== 'undefined' ? window.crypto : (globalThis as any).crypto;
+
+  if (!cryptoObj || !cryptoObj.getRandomValues) {
+    // Fallback for environments without secure randomness (e.g., some SSR or old test environments)
+    let result = '';
+    for (let i = 0; i < length; i++) {
+      result += charset.charAt(Math.floor(Math.random() * charset.length));
+    }
+    return result;
+  }
+
+  cryptoObj.getRandomValues(array);
+  let result = '';
+  for (let i = 0; i < length; i++) {
+    result += charset.charAt(array[i] % charset.length);
+  }
+  return result;
+}
+
+/**
  * Generates a rate limit key based on user identifier.
  * Uses localStorage user ID if available, otherwise falls back to a session ID.
  *
@@ -181,7 +214,7 @@ export function getRateLimitKey(action: string): string {
     if (!userId) {
       userId = sessionStorage.getItem('friendle_session_id') || '';
       if (!userId) {
-        userId = Math.random().toString(36).substring(2);
+        userId = generateSecureId();
         sessionStorage.setItem('friendle_session_id', userId);
       }
     }
