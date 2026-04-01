@@ -401,7 +401,6 @@ export function useRoom(
                 // Delete room if empty
                 if (remainingPlayers === 0) {
                     await remove(roomRef);
-                    console.log(`Room ${roomId} deleted (no players remaining)`);
                 }
             }
         } catch (err) {
