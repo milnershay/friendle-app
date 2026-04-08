@@ -6,11 +6,6 @@
  * Validation constants used throughout the application.
  */
 export const VALIDATION = {
-  USERNAME: {
-    MIN_LENGTH: 1,
-    MAX_LENGTH: 30,
-    PATTERN: /^[a-zA-Z0-9\u0590-\u05FF\s_-]+$/, // Alphanumeric + Hebrew + spaces, underscore, dash
-  },
   ROOM_CODE: {
     LENGTH: 6,
     PATTERN: /^[A-Z0-9]{6}$/,
@@ -32,34 +27,6 @@ interface RateLimitEntry {
 }
 
 const rateLimitStore = new Map<string, RateLimitEntry>();
-
-/**
- * Validates a username against the defined rules.
- *
- * @param username - The username to validate.
- * @returns An object containing a boolean `valid` status and an optional `error` message.
- */
-export function validateUsername(username: string): { valid: boolean; error?: string } {
-  if (!username || username.trim().length === 0) {
-    return { valid: false, error: 'Username cannot be empty' };
-  }
-
-  const trimmed = username.trim();
-
-  if (trimmed.length < VALIDATION.USERNAME.MIN_LENGTH) {
-    return { valid: false, error: `Username must be at least ${VALIDATION.USERNAME.MIN_LENGTH} character` };
-  }
-
-  if (trimmed.length > VALIDATION.USERNAME.MAX_LENGTH) {
-    return { valid: false, error: `Username must be at most ${VALIDATION.USERNAME.MAX_LENGTH} characters` };
-  }
-
-  if (!VALIDATION.USERNAME.PATTERN.test(trimmed)) {
-    return { valid: false, error: 'Username can only contain letters, numbers, spaces, underscores, and dashes' };
-  }
-
-  return { valid: true };
-}
 
 /**
  * Validates a room code format.

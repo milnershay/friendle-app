@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
-    validateUsername,
     validateRoomCode,
     validateWord,
     checkRateLimit,
@@ -10,30 +9,6 @@ import {
 } from './validation';
 
 describe('Validation', () => {
-    describe('validateUsername', () => {
-        it('accepts valid usernames', () => {
-            expect(validateUsername('Player1').valid).toBe(true);
-            expect(validateUsername('User Name').valid).toBe(true);
-            expect(validateUsername('שלום').valid).toBe(true);
-            expect(validateUsername('user-name_1').valid).toBe(true);
-        });
-
-        it('rejects empty usernames', () => {
-            expect(validateUsername('').valid).toBe(false);
-            expect(validateUsername('   ').valid).toBe(false);
-        });
-
-        it('rejects long usernames', () => {
-            const longName = 'a'.repeat(31);
-            expect(validateUsername(longName).valid).toBe(false);
-        });
-
-        it('rejects invalid characters', () => {
-            expect(validateUsername('User@Name').valid).toBe(false);
-            expect(validateUsername('<script>').valid).toBe(false);
-        });
-    });
-
     describe('validateRoomCode', () => {
         it('accepts valid room codes', () => {
             expect(validateRoomCode('ABCDEF').valid).toBe(true);
