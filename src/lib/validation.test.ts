@@ -112,6 +112,28 @@ describe('Validation', () => {
         it('trims and collapses whitespace', () => {
             expect(sanitizeText('  hello   world  ')).toBe('hello world');
             expect(sanitizeText('foo\nbar')).toBe('foo bar');
+            expect(sanitizeText('\t\t\r\n  multi\n  line \t text  ')).toBe('multi line text');
+        });
+
+        it('handles empty or whitespace-only strings', () => {
+            expect(sanitizeText('')).toBe('');
+            expect(sanitizeText('   ')).toBe('');
+            expect(sanitizeText('\n\t\r')).toBe('');
+        });
+
+        it('preserves special characters', () => {
+            expect(sanitizeText('!@#$%^&*()_+-=')).toBe('!@#$%^&*()_+-=');
+            expect(sanitizeText('  emoji 👋 test  ')).toBe('emoji 👋 test');
+        });
+
+        it('handles strings with HTML tags (preserves tags but collapses whitespace)', () => {
+            expect(sanitizeText('  <p> hello </p>  ')).toBe('<p> hello </p>');
+            expect(sanitizeText('<script>  alert("hi")  </script>')).toBe('<script> alert("hi") </script>');
+        });
+
+        it('handles Unicode characters correctly', () => {
+            expect(sanitizeText('  שלום    עולם  ')).toBe('שלום עולם');
+            expect(sanitizeText('  안녕하세요    ')).toBe('안녕하세요');
         });
     });
 
